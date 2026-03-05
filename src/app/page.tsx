@@ -421,7 +421,7 @@ function PriceTicker() {
               <Image src={coin.icon} alt={coin.symbol} width={18} height={18} unoptimized style={{ borderRadius: "50%" }} />
               <span style={{ fontWeight: 600, fontSize: 12, color: "#c8caff" }}>{coin.symbol}</span>
               <span style={{ fontSize: 12, color: "#e8eaff", fontWeight: 500 }}>
-                {p ? `$${p.usd.toLocaleString(undefined, { maximumFractionDigits: p.usd > 100 ? 0 : p.usd > 1 ? 2 : 4 })}` : "—"}
+                {p?.usd != null ? `$${p.usd.toLocaleString(undefined, { maximumFractionDigits: p.usd > 100 ? 0 : p.usd > 1 ? 2 : 4 })}` : "—"}
               </span>
               {p && (
                 <span style={{ fontSize: 11, color: isUp ? "#4ade80" : "#f87171", fontWeight: 600 }}>
