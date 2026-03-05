@@ -716,6 +716,34 @@ export default function SwapPage() {
       return;
     }
     try {
+      // If Solana network selected, switch MetaMask to Solana first
+      if (isSolana) {
+        const SOLANA_CHAIN_ID = "0x65"; // 101 decimal — MetaMask Solana network
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: SOLANA_CHAIN_ID }],
+          });
+        } catch (switchErr) {
+          const e = switchErr as { code?: number };
+          if (e.code === 4902) {
+            // Chain not added — add Solana network to MetaMask
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [{
+                chainId: SOLANA_CHAIN_ID,
+                chainName: "Solana Mainnet",
+                nativeCurrency: { name: "Solana", symbol: "SOL", decimals: 9 },
+                rpcUrls: ["https://api.mainnet-beta.solana.com"],
+                blockExplorerUrls: ["https://solscan.io"],
+              }],
+            });
+          } else {
+            showToast("❌ Failed to switch to Solana in MetaMask", "err");
+            return;
+          }
+        }
+      }
       const accs = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
       if (accs[0]) {
         if (isSolana) {
