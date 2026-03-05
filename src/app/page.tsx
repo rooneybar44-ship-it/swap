@@ -711,32 +711,24 @@ export default function SwapPage() {
   }, [account, solanaAccount, isSolana, isOnSelectedNetwork, selectedNetwork, loadBalancesAndPrices]);
 
   async function connectWallet() {
-    if (isSolana) {
-      // Connect via Phantom for Solana
-      if (!window.solana?.isPhantom) {
-        alert("Phantom wallet not found. Please install Phantom browser extension from phantom.app");
-        return;
-      }
-      try {
-        const resp = await window.solana.connect();
-        const pubkey = resp.publicKey.toString();
-        setSolanaAccount(pubkey);
-      } catch { /* user rejected */ }
-    } else {
-      if (!window.ethereum) {
-        alert("MetaMask not found. Please install MetaMask browser extension.");
-        return;
-      }
-      try {
-        const accs = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
-        if (accs[0]) setAccount(accs[0]);
-      } catch { /* user rejected */ }
+    if (!window.ethereum) {
+      alert("MetaMask not found. Please install MetaMask browser extension.");
+      return;
     }
+    try {
+      const accs = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
+      if (accs[0]) {
+        if (isSolana) {
+          setSolanaAccount(accs[0]);
+        } else {
+          setAccount(accs[0]);
+        }
+      }
+    } catch { /* user rejected */ }
   }
 
   async function disconnectWallet() {
     if (isSolana) {
-      await window.solana?.disconnect().catch(() => {});
       setSolanaAccount(null);
     } else {
       setAccount(null);
@@ -987,7 +979,7 @@ export default function SwapPage() {
                   <path d="M16 3H8a2 2 0 00-2 2v2h12V5a2 2 0 00-2-2z" stroke="white" strokeWidth="2"/>
                   <circle cx="17" cy="14" r="1.5" fill="white"/>
                 </svg>
-                {isSolana ? "Connect Phantom" : "Connect Wallet"}
+                Connect Wallet
               </>
             )}
           </button>
