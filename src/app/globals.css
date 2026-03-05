@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f0f4ff;
-  --foreground: #1a1d2e;
-  --card: #ffffff;
-  --border: #e2e8f0;
-  --accent: #4f6ef7;
-  --accent-light: #eef1ff;
-  --accent-dark: #3a56d4;
+  --background: #0d0e1a;
+  --foreground: #e8eaff;
+  --card: #13152a;
+  --border: #252847;
+  --accent: #6c63ff;
+  --accent-light: #1e1f3a;
+  --accent-dark: #5548e0;
   --success: #22c55e;
-  --muted: #64748b;
+  --muted: #7b82b0;
 }
 
 * {
@@ -48,12 +48,12 @@ body {
 .swap-card {
   background: var(--card);
   border: 1px solid var(--border);
-  box-shadow: 0 4px 24px rgba(79, 110, 247, 0.08), 0 1px 4px rgba(0,0,0,0.04);
+  box-shadow: 0 4px 40px rgba(108, 99, 255, 0.12), 0 1px 4px rgba(0,0,0,0.3);
   border-radius: 24px;
 }
 
 .token-input {
-  background: #f8faff;
+  background: #0a0b18;
   border: 1.5px solid var(--border);
   border-radius: 16px;
   transition: border-color 0.2s ease, background 0.2s ease;
@@ -61,21 +61,21 @@ body {
 
 .token-input:focus-within {
   border-color: var(--accent);
-  background: #f0f4ff;
+  background: #0d0e20;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #4f6ef7 0%, #6c8bff 100%);
+  background: linear-gradient(135deg, #6c63ff 0%, #9b8fff 100%);
   color: white;
   border-radius: 14px;
   font-weight: 700;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 14px rgba(79, 110, 247, 0.3);
+  box-shadow: 0 4px 20px rgba(108, 99, 255, 0.4);
 }
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(79, 110, 247, 0.4);
+  box-shadow: 0 6px 28px rgba(108, 99, 255, 0.55);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -83,31 +83,31 @@ body {
 }
 
 .btn-primary:disabled {
-  background: #c8d0e7;
+  background: #1e2040;
   box-shadow: none;
-  color: #8896b3;
+  color: #4a4f7a;
   cursor: not-allowed;
 }
 
 .token-btn {
-  background: #f0f4ff;
-  border: 1.5px solid #dde4f7;
+  background: #0a0b18;
+  border: 1.5px solid var(--border);
   border-radius: 12px;
   transition: all 0.2s ease;
   white-space: nowrap;
 }
 
 .token-btn:hover {
-  background: #e4eaff;
+  background: #13152a;
   border-color: var(--accent);
 }
 
 .swap-arrow-btn {
-  background: white;
+  background: #0a0b18;
   border: 1.5px solid var(--border);
   border-radius: 12px;
   transition: all 0.25s ease;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   color: var(--accent);
 }
 
@@ -118,24 +118,24 @@ body {
 }
 
 .stat-card {
-  background: white;
+  background: var(--card);
   border: 1px solid var(--border);
   border-radius: 16px;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
 }
 
 .stat-card:hover {
-  box-shadow: 0 4px 16px rgba(79, 110, 247, 0.12);
-  border-color: #c5d0f5;
+  box-shadow: 0 4px 20px rgba(108, 99, 255, 0.2);
+  border-color: #3d3a6e;
   transform: translateY(-2px);
 }
 
 .token-modal {
-  background: white;
+  background: #13152a;
   border: 1px solid var(--border);
   border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
 }
 
 .token-list-item {
@@ -144,13 +144,13 @@ body {
 }
 
 .token-list-item:hover {
-  background: #f0f4ff;
+  background: #1a1c35;
 }
 
 .badge-safe {
-  background: #ecfdf5;
-  color: #16a34a;
-  border: 1px solid #bbf7d0;
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.25);
   border-radius: 999px;
   font-size: 11px;
   font-weight: 600;
@@ -158,9 +158,9 @@ body {
 }
 
 .badge-info {
-  background: #eff6ff;
-  color: #2563eb;
-  border: 1px solid #bfdbfe;
+  background: rgba(108, 99, 255, 0.15);
+  color: #9b8fff;
+  border: 1px solid rgba(108, 99, 255, 0.3);
   border-radius: 999px;
   font-size: 11px;
   font-weight: 600;
@@ -168,8 +168,8 @@ body {
 }
 
 .info-row {
-  background: #f8faff;
-  border: 1px solid #e8eeff;
+  background: #0a0b18;
+  border: 1px solid var(--border);
   border-radius: 12px;
 }
 

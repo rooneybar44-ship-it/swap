@@ -61,7 +61,7 @@ function TokenSelectModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(15,20,50,0.45)", backdropFilter: "blur(6px)" }}
+      style={{ background: "rgba(5,6,20,0.7)", backdropFilter: "blur(6px)" }}
       onClick={onClose}
     >
       <div
@@ -70,13 +70,13 @@ function TokenSelectModal({
       >
         <div className="p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 style={{ color: "#1a1d2e", fontWeight: 700, fontSize: 17 }}>Select Token</h3>
+            <h3 style={{ color: "#e8eaff", fontWeight: 700, fontSize: 17 }}>Select Token</h3>
             <button
               onClick={onClose}
               style={{
                 width: 32, height: 32, borderRadius: 8,
-                background: "#f0f4ff", border: "1px solid #e2e8f0",
-                color: "#64748b", cursor: "pointer", fontSize: 14,
+                background: "#0d0e1a", border: "1px solid #252847",
+                color: "#7b82b0", cursor: "pointer", fontSize: 14,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}
             >
@@ -84,7 +84,7 @@ function TokenSelectModal({
             </button>
           </div>
           <div className="relative mb-4">
-            <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: 14 }}>🔍</span>
+            <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#6b7299", fontSize: 14 }}>🔍</span>
             <input
               autoFocus
               type="text"
@@ -92,14 +92,14 @@ function TokenSelectModal({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{
-                width: "100%", background: "#f8faff",
-                border: "1.5px solid #e2e8f0", borderRadius: 12,
+                width: "100%", background: "#0a0b18",
+                border: "1.5px solid #252847", borderRadius: 12,
                 paddingLeft: 36, paddingRight: 14, paddingTop: 10, paddingBottom: 10,
-                color: "#1a1d2e", fontSize: 14, outline: "none",
+                color: "#e8eaff", fontSize: 14, outline: "none",
               }}
             />
           </div>
-          <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6, paddingLeft: 4 }}>
+          <div style={{ fontSize: 11, color: "#6b7299", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6, paddingLeft: 4 }}>
             All Tokens
           </div>
         </div>
@@ -117,12 +117,12 @@ function TokenSelectModal({
             >
               <TokenAvatar symbol={token.symbol} size="md" />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ color: "#1a1d2e", fontWeight: 600, fontSize: 14 }}>{token.symbol}</div>
-                <div style={{ color: "#94a3b8", fontSize: 12 }}>{token.name}</div>
+                <div style={{ color: "#e8eaff", fontWeight: 600, fontSize: 14 }}>{token.symbol}</div>
+                <div style={{ color: "#6b7299", fontSize: 12 }}>{token.name}</div>
               </div>
               <div style={{ textAlign: "right" }}>
-                <div style={{ color: "#334155", fontSize: 13, fontWeight: 500 }}>{token.balance}</div>
-                <div style={{ color: "#94a3b8", fontSize: 11 }}>${token.price.toLocaleString()}</div>
+                <div style={{ color: "#c0c8f0", fontSize: 13, fontWeight: 500 }}>{token.balance}</div>
+                <div style={{ color: "#6b7299", fontSize: 11 }}>${token.price.toLocaleString()}</div>
               </div>
             </button>
           ))}
@@ -169,7 +169,7 @@ export default function SafeSwapPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f0f4ff" }}>
+    <div style={{ minHeight: "100vh", background: "#0d0e1a" }}>
       {/* Subtle background blobs */}
       <div style={{
         position: "fixed", inset: 0, pointerEvents: "none", overflow: "hidden", zIndex: 0,
@@ -177,12 +177,12 @@ export default function SafeSwapPage() {
         <div style={{
           position: "absolute", top: "-80px", right: "-80px",
           width: 400, height: 400, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(79,110,247,0.12) 0%, transparent 70%)",
+          background: "radial-gradient(circle, rgba(108,99,255,0.18) 0%, transparent 70%)",
         }} />
         <div style={{
           position: "absolute", bottom: "-60px", left: "-60px",
           width: 350, height: 350, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(34,197,94,0.08) 0%, transparent 70%)",
+          background: "radial-gradient(circle, rgba(108,99,255,0.1) 0%, transparent 70%)",
         }} />
       </div>
 
@@ -196,9 +196,9 @@ export default function SafeSwapPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{
             width: 38, height: 38, borderRadius: 12,
-            background: "linear-gradient(135deg, #4f6ef7, #22c55e)",
+            background: "linear-gradient(135deg, #6c63ff, #9b8fff)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 4px 12px rgba(79,110,247,0.3)",
+            boxShadow: "0 4px 12px rgba(108,99,255,0.4)",
           }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <path d="M12 2L4 7v5c0 5.25 3.4 10.15 8 11.35C16.6 22.15 20 17.25 20 12V7L12 2z" fill="white" fillOpacity="0.9"/>
@@ -206,8 +206,8 @@ export default function SafeSwapPage() {
             </svg>
           </div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: 18, color: "#1a1d2e", letterSpacing: "-0.5px" }}>SafeSwap</div>
-            <div style={{ fontSize: 10, color: "#64748b", fontWeight: 500, marginTop: -2 }}>Secure Exchange</div>
+            <div style={{ fontWeight: 800, fontSize: 18, color: "#e8eaff", letterSpacing: "-0.5px" }}>SafeSwap</div>
+            <div style={{ fontSize: 10, color: "#7b82b0", fontWeight: 500, marginTop: -2 }}>Secure Exchange</div>
           </div>
         </div>
 
@@ -219,8 +219,8 @@ export default function SafeSwapPage() {
               style={{
                 padding: "8px 16px", borderRadius: 10, fontSize: 14, fontWeight: 500,
                 border: "none", cursor: "pointer",
-                background: i === 0 ? "#eef1ff" : "transparent",
-                color: i === 0 ? "#4f6ef7" : "#64748b",
+                background: i === 0 ? "rgba(108,99,255,0.2)" : "transparent",
+                color: i === 0 ? "#9b8fff" : "#7b82b0",
                 transition: "all 0.15s",
               }}
             >
@@ -236,9 +236,9 @@ export default function SafeSwapPage() {
             display: "flex", alignItems: "center", gap: 8,
             padding: "9px 18px", borderRadius: 12, fontSize: 14, fontWeight: 600,
             cursor: "pointer", transition: "all 0.2s",
-            background: connected ? "#ecfdf5" : "linear-gradient(135deg, #4f6ef7, #6c8bff)",
-            color: connected ? "#16a34a" : "white",
-            border: connected ? "1.5px solid #bbf7d0" : "none",
+            background: connected ? "rgba(34,197,94,0.12)" : "linear-gradient(135deg, #4f6ef7, #6c8bff)",
+            color: connected ? "#4ade80" : "white",
+            border: connected ? "1.5px solid rgba(34,197,94,0.3)" : "none",
             boxShadow: connected ? "none" : "0 4px 12px rgba(79,110,247,0.3)",
           }}
         >
@@ -265,19 +265,19 @@ export default function SafeSwapPage() {
 
         {/* Hero */}
         <div className="animate-float" style={{ textAlign: "center", marginBottom: 36 }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#ecfdf5", border: "1px solid #bbf7d0", borderRadius: 999, padding: "4px 14px", marginBottom: 16 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.25)", borderRadius: 999, padding: "4px 14px", marginBottom: 16 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
               <path d="M12 2L4 7v5c0 5.25 3.4 10.15 8 11.35C16.6 22.15 20 17.25 20 12V7L12 2z" fill="#22c55e"/>
             </svg>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#16a34a" }}>Audited & Secure</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#4ade80" }}>Audited & Secure</span>
           </div>
-          <h1 style={{ fontSize: "clamp(36px, 6vw, 56px)", fontWeight: 800, color: "#1a1d2e", letterSpacing: "-1.5px", lineHeight: 1.1, marginBottom: 12 }}>
+          <h1 style={{ fontSize: "clamp(36px, 6vw, 56px)", fontWeight: 800, color: "#e8eaff", letterSpacing: "-1.5px", lineHeight: 1.1, marginBottom: 12 }}>
             Swap Tokens{" "}
-            <span style={{ background: "linear-gradient(135deg, #4f6ef7, #22c55e)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+            <span style={{ background: "linear-gradient(135deg, #6c63ff, #b09fff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
               Safely
             </span>
           </h1>
-          <p style={{ color: "#64748b", fontSize: 17, maxWidth: 420, margin: "0 auto" }}>
+          <p style={{ color: "#7b82b0", fontSize: 17, maxWidth: 420, margin: "0 auto" }}>
             Best rates across all major DEXs — protected by multi-layer security
           </p>
         </div>
@@ -292,8 +292,8 @@ export default function SafeSwapPage() {
           ].map((stat) => (
             <div key={stat.label} className="stat-card" style={{ padding: "12px 20px", textAlign: "center", minWidth: 120 }}>
               <div style={{ fontSize: 18, marginBottom: 2 }}>{stat.icon}</div>
-              <div style={{ fontWeight: 700, fontSize: 16, color: "#1a1d2e" }}>{stat.value}</div>
-              <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500 }}>{stat.label}</div>
+              <div style={{ fontWeight: 700, fontSize: 16, color: "#e8eaff" }}>{stat.value}</div>
+              <div style={{ fontSize: 11, color: "#6b7299", fontWeight: 500 }}>{stat.label}</div>
             </div>
           ))}
         </div>
@@ -303,7 +303,7 @@ export default function SafeSwapPage() {
 
           {/* Card header */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-            <div style={{ fontWeight: 700, fontSize: 16, color: "#1a1d2e" }}>Swap</div>
+            <div style={{ fontWeight: 700, fontSize: 16, color: "#e8eaff" }}>Swap</div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span className="badge-safe">🔒 Protected</span>
               {/* Slippage */}
@@ -317,7 +317,7 @@ export default function SafeSwapPage() {
                       cursor: "pointer", transition: "all 0.15s",
                       background: slippage === s ? "#eef1ff" : "transparent",
                       color: slippage === s ? "#4f6ef7" : "#94a3b8",
-                      border: slippage === s ? "1.5px solid #c5d0f5" : "1.5px solid transparent",
+                      border: slippage === s ? "1.5px solid rgba(108,99,255,0.4)" : "1.5px solid transparent",
                     }}
                   >
                     {s}%
@@ -330,9 +330,9 @@ export default function SafeSwapPage() {
           {/* From */}
           <div className="token-input" style={{ padding: 16, marginBottom: 8 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-              <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 500 }}>You Pay</span>
-              <span style={{ fontSize: 12, color: "#94a3b8" }}>
-                Balance: <span style={{ color: "#475569", fontWeight: 600 }}>{fromToken.balance} {fromToken.symbol}</span>
+              <span style={{ fontSize: 12, color: "#6b7299", fontWeight: 500 }}>You Pay</span>
+              <span style={{ fontSize: 12, color: "#6b7299" }}>
+                Balance: <span style={{ color: "#a0a8d0", fontWeight: 600 }}>{fromToken.balance} {fromToken.symbol}</span>
               </span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -342,8 +342,8 @@ export default function SafeSwapPage() {
                 style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", cursor: "pointer", border: "1.5px solid #dde4f7" }}
               >
                 <TokenAvatar symbol={fromToken.symbol} size="sm" />
-                <span style={{ fontWeight: 700, fontSize: 15, color: "#1a1d2e" }}>{fromToken.symbol}</span>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ color: "#94a3b8" }}>
+                <span style={{ fontWeight: 700, fontSize: 15, color: "#e8eaff" }}>{fromToken.symbol}</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ color: "#6b7299" }}>
                   <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </button>
@@ -355,11 +355,11 @@ export default function SafeSwapPage() {
                   onChange={(e) => setFromAmount(e.target.value)}
                   style={{
                     width: "100%", background: "transparent", border: "none", outline: "none",
-                    fontSize: 24, fontWeight: 700, color: "#1a1d2e", textAlign: "right",
+                    fontSize: 24, fontWeight: 700, color: "#e8eaff", textAlign: "right",
                   }}
                 />
                 {usdValue && (
-                  <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>≈ ${usdValue}</div>
+                  <div style={{ fontSize: 12, color: "#6b7299", marginTop: 2 }}>≈ ${usdValue}</div>
                 )}
               </div>
             </div>
@@ -370,8 +370,8 @@ export default function SafeSwapPage() {
                   style={{
                     flex: 1, fontSize: 11, fontWeight: 600, padding: "5px 0",
                     borderRadius: 8, cursor: "pointer", transition: "all 0.15s",
-                    background: "#f0f4ff", color: "#64748b",
-                    border: "1px solid #e2e8f0",
+                    background: "#0d0e1a", color: "#7b82b0",
+                    border: "1px solid #252847",
                   }}
                   onClick={() => {
                     const bal = parseFloat(fromToken.balance.replace(",", ""));
@@ -401,9 +401,9 @@ export default function SafeSwapPage() {
           {/* To */}
           <div className="token-input" style={{ padding: 16, marginBottom: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-              <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 500 }}>You Receive</span>
-              <span style={{ fontSize: 12, color: "#94a3b8" }}>
-                Balance: <span style={{ color: "#475569", fontWeight: 600 }}>{toToken.balance} {toToken.symbol}</span>
+              <span style={{ fontSize: 12, color: "#6b7299", fontWeight: 500 }}>You Receive</span>
+              <span style={{ fontSize: 12, color: "#6b7299" }}>
+                Balance: <span style={{ color: "#a0a8d0", fontWeight: 600 }}>{toToken.balance} {toToken.symbol}</span>
               </span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -413,17 +413,17 @@ export default function SafeSwapPage() {
                 style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", cursor: "pointer", border: "1.5px solid #dde4f7" }}
               >
                 <TokenAvatar symbol={toToken.symbol} size="sm" />
-                <span style={{ fontWeight: 700, fontSize: 15, color: "#1a1d2e" }}>{toToken.symbol}</span>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ color: "#94a3b8" }}>
+                <span style={{ fontWeight: 700, fontSize: 15, color: "#e8eaff" }}>{toToken.symbol}</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ color: "#6b7299" }}>
                   <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </button>
               <div style={{ flex: 1, textAlign: "right" }}>
-                <div style={{ fontSize: 24, fontWeight: 700, color: toAmount ? "#1a1d2e" : "#c8d0e7" }}>
+                <div style={{ fontSize: 24, fontWeight: 700, color: toAmount ? "#e8eaff" : "#c8d0e7" }}>
                   {toAmount || "0.00"}
                 </div>
                 {toAmount && (
-                  <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: "#6b7299", marginTop: 2 }}>
                     ≈ ${(Number(toAmount) * toToken.price).toFixed(2)}
                   </div>
                 )}
@@ -441,7 +441,7 @@ export default function SafeSwapPage() {
                 { label: "Slippage", value: `${slippage}%` },
               ].map((row) => (
                 <div key={row.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "3px 0" }}>
-                  <span style={{ fontSize: 12, color: "#94a3b8" }}>{row.label}</span>
+                  <span style={{ fontSize: 12, color: "#6b7299" }}>{row.label}</span>
                   <span style={{ fontSize: 12, fontWeight: 600, color: row.green ? "#22c55e" : "#475569" }}>{row.value}</span>
                 </div>
               ))}
@@ -483,9 +483,9 @@ export default function SafeSwapPage() {
           ].map((b) => (
             <div key={b.text} style={{
               display: "flex", alignItems: "center", gap: 6,
-              background: "white", border: "1px solid #e2e8f0",
+              background: "#13152a", border: "1px solid #252847",
               borderRadius: 999, padding: "5px 14px",
-              fontSize: 12, color: "#64748b", fontWeight: 500,
+              fontSize: 12, color: "#7b82b0", fontWeight: 500,
               boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
             }}>
               <span>{b.icon}</span>
