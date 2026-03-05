@@ -10,7 +10,7 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
 
 - [x] Token swap UI — dark theme DEX interface with SwapX branding, animated swap card, token selector modal, slippage settings, stats bar, connect wallet button
 - [x] Coin logos via CryptoIcons CDN (next/image unoptimized), expanded token list to 12 tokens (ETH, USDC, BTC, BNB, SOL, ADA, AVAX, MATIC, DOT, LINK, UNI, USDT)
-- [x] Fixed Solana wallet connection — `connectWallet()` now uses Phantom (`window.solana`) for Solana network and MetaMask (`window.ethereum`) for EVM chains. `disconnectWallet()` properly calls `window.solana.disconnect()` on Solana.
+- [x] Replaced Phantom wallet with MetaMask-only approach — Solana network now uses MetaMask Solana Snap (`npm:@metamask/solana-snap`) via `wallet_requestSnaps` + `wallet_invokeSnap`. EVM chains use standard `eth_requestAccounts`. Removed all `window.solana` references.
 
 - [x] Base Next.js 16 setup with App Router
 - [x] TypeScript configuration with strict mode

@@ -9,14 +9,7 @@ declare global {
       request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
       on: (event: string, handler: (...args: unknown[]) => void) => void;
       removeListener: (event: string, handler: (...args: unknown[]) => void) => void;
-    };
-    solana?: {
-      isPhantom?: boolean;
-      connect: (opts?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey: { toString: () => string } }>;
-      disconnect: () => Promise<void>;
-      publicKey: { toString: () => string } | null;
-      on: (event: string, handler: (...args: unknown[]) => void) => void;
-      removeListener: (event: string, handler: (...args: unknown[]) => void) => void;
+      isMetaMask?: boolean;
     };
   }
 }
@@ -514,6 +507,7 @@ export default function SwapPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [toastType, setToastType] = useState<"ok" | "err" | "info">("ok");
   const [account, setAccount] = useState<string | null>(null);
+  // solanaAccount holds the MetaMask Solana Snap public key when on Solana network
   const [solanaAccount, setSolanaAccount] = useState<string | null>(null);
   const [chainId, setChainId] = useState<string | null>(null);
   const [exchangeRate, setExchangeRate] = useState<string | null>(null);
@@ -674,33 +668,21 @@ export default function SwapPage() {
     };
   }, [applyNetwork]);
 
-  // Phantom wallet event listeners
+  // MetaMask Solana Snap — try to restore session on mount
   useEffect(() => {
-    if (!window.solana) return;
-    const onDisconnect = () => setSolanaAccount(null);
-    const onAccountChanged = (pubkey: unknown) => {
-      if (pubkey) {
-        const pk = pubkey as { toString: () => string };
-        setSolanaAccount(pk.toString());
-      } else {
-        setSolanaAccount(null);
-      }
-    };
-    window.solana.on("disconnect", onDisconnect);
-    window.solana.on("accountChanged", onAccountChanged);
-    // Auto-reconnect if already trusted
-    if (window.solana.publicKey) {
-      setSolanaAccount(window.solana.publicKey.toString());
-    } else {
-      window.solana.connect({ onlyIfTrusted: true }).then((resp) => {
-        setSolanaAccount(resp.publicKey.toString());
-      }).catch(() => {});
-    }
-    return () => {
-      window.solana?.removeListener("disconnect", onDisconnect);
-      window.solana?.removeListener("accountChanged", onAccountChanged);
-    };
-  }, []);
+    if (!isSolana || !window.ethereum) return;
+    // Silently check if the Solana snap is already installed and has an account
+    window.ethereum.request({
+      method: "wallet_invokeSnap",
+      params: [{
+        snapId: "npm:@metamask/solana-snap",
+        request: { method: "getAccount" },
+      }] as unknown[],
+    }).then((result) => {
+      const r = result as { publicKey?: string } | null;
+      if (r?.publicKey) setSolanaAccount(r.publicKey);
+    }).catch(() => { /* snap not installed or no account yet */ });
+  }, [isSolana]);
 
   useEffect(() => {
     if (isSolana) {
@@ -711,22 +693,40 @@ export default function SwapPage() {
   }, [account, solanaAccount, isSolana, isOnSelectedNetwork, selectedNetwork, loadBalancesAndPrices]);
 
   async function connectWallet() {
+    if (!window.ethereum) {
+      alert("MetaMask not found. Please install MetaMask browser extension from metamask.io");
+      return;
+    }
     if (isSolana) {
-      // Use Phantom wallet for Solana
-      if (!window.solana) {
-        alert("Phantom wallet not found. Please install Phantom browser extension from phantom.app");
-        return;
-      }
+      // Connect MetaMask via Solana Snap for Solana network
       try {
-        const resp = await window.solana.connect();
-        setSolanaAccount(resp.publicKey.toString());
-      } catch { /* user rejected */ }
-    } else {
-      // Use MetaMask for EVM chains
-      if (!window.ethereum) {
-        alert("MetaMask not found. Please install MetaMask browser extension.");
-        return;
+        // Step 1: Install / enable the MetaMask Solana Snap
+        await window.ethereum.request({
+          method: "wallet_requestSnaps",
+          params: [{ "npm:@metamask/solana-snap": {} }] as unknown[],
+        });
+        // Step 2: Get the Solana public key from the snap
+        const result = await window.ethereum.request({
+          method: "wallet_invokeSnap",
+          params: [{
+            snapId: "npm:@metamask/solana-snap",
+            request: { method: "getAccount" },
+          }] as unknown[],
+        });
+        const r = result as { publicKey?: string } | null;
+        if (r?.publicKey) {
+          setSolanaAccount(r.publicKey);
+        } else {
+          showToast("❌ Could not get Solana account from MetaMask", "err");
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "";
+        if (!msg.toLowerCase().includes("user rejected") && !msg.toLowerCase().includes("user denied")) {
+          showToast("❌ MetaMask Solana Snap error: " + msg.slice(0, 60), "err");
+        }
       }
+    } else {
+      // Connect MetaMask for EVM chains
       try {
         const accs = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
         if (accs[0]) setAccount(accs[0]);
@@ -736,9 +736,6 @@ export default function SwapPage() {
 
   async function disconnectWallet() {
     if (isSolana) {
-      try {
-        await window.solana?.disconnect();
-      } catch { /* ignore */ }
       setSolanaAccount(null);
     } else {
       setAccount(null);
@@ -747,7 +744,8 @@ export default function SwapPage() {
 
   async function switchToNetwork(net: Network) {
     if (net.chainId === 0) {
-      showToast(`ℹ️ Please switch to ${net.name} manually in MetaMask`, "info");
+      // Solana is handled via MetaMask Solana Snap — no chain switch needed
+      showToast(`ℹ️ Solana uses MetaMask Snap — click Connect Wallet to link your Solana account`, "info");
       return;
     }
     try {
