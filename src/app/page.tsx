@@ -675,12 +675,12 @@ export default function SwapPage() {
     window.ethereum.request({
       method: "wallet_invokeSnap",
       params: {
-        snapId: "npm:@metamask/solana-snap",
-        request: { method: "solana_getAccount", params: { addressIndex: 0 } },
+        snapId: "npm:@solflare-wallet/solana-snap",
+        request: { method: "getPublicKey", params: { derivationPath: ["0'", "0'"], confirm: false } },
       } as unknown as Record<string, unknown>,
     }).then((result) => {
-      const r = result as { publicKey?: string } | null;
-      if (r?.publicKey) setSolanaAccount(r.publicKey);
+      const pubkey = result as string | null;
+      if (pubkey) setSolanaAccount(pubkey);
     }).catch(() => { /* snap not installed or no account yet */ });
   }, [isSolana]);
 
@@ -700,22 +700,22 @@ export default function SwapPage() {
     if (isSolana) {
       // Connect MetaMask via Solana Snap for Solana network
       try {
-        // Step 1: Install / enable the MetaMask Solana Snap
+        // Step 1: Install / enable the Solflare Solana Snap
         await window.ethereum.request({
           method: "wallet_requestSnaps",
-          params: { "npm:@metamask/solana-snap": {} } as unknown as Record<string, unknown>,
+          params: { "npm:@solflare-wallet/solana-snap": {} } as unknown as Record<string, unknown>,
         });
         // Step 2: Get the Solana public key from the snap
         const result = await window.ethereum.request({
           method: "wallet_invokeSnap",
           params: {
-            snapId: "npm:@metamask/solana-snap",
-            request: { method: "solana_getAccount", params: { addressIndex: 0 } },
+            snapId: "npm:@solflare-wallet/solana-snap",
+            request: { method: "getPublicKey", params: { derivationPath: ["0'", "0'"], confirm: true } },
           } as unknown as Record<string, unknown>,
         });
-        const r = result as { publicKey?: string } | null;
-        if (r?.publicKey) {
-          setSolanaAccount(r.publicKey);
+        const pubkey = result as string | null;
+        if (pubkey) {
+          setSolanaAccount(pubkey);
         } else {
           showToast("❌ Could not get Solana account from MetaMask", "err");
         }
