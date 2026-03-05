@@ -6,7 +6,7 @@ import Image from "next/image";
 declare global {
   interface Window {
     ethereum?: {
-      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+      request: (args: { method: string; params?: unknown[] | Record<string, unknown> }) => Promise<unknown>;
       on: (event: string, handler: (...args: unknown[]) => void) => void;
       removeListener: (event: string, handler: (...args: unknown[]) => void) => void;
       isMetaMask?: boolean;
@@ -674,10 +674,10 @@ export default function SwapPage() {
     // Silently check if the Solana snap is already installed and has an account
     window.ethereum.request({
       method: "wallet_invokeSnap",
-      params: [{
+      params: {
         snapId: "npm:@metamask/solana-snap",
         request: { method: "solana_getAccount", params: { addressIndex: 0 } },
-      }] as unknown[],
+      } as unknown as Record<string, unknown>,
     }).then((result) => {
       const r = result as { publicKey?: string } | null;
       if (r?.publicKey) setSolanaAccount(r.publicKey);
@@ -703,15 +703,15 @@ export default function SwapPage() {
         // Step 1: Install / enable the MetaMask Solana Snap
         await window.ethereum.request({
           method: "wallet_requestSnaps",
-          params: [{ "npm:@metamask/solana-snap": {} }] as unknown[],
+          params: { "npm:@metamask/solana-snap": {} } as unknown as Record<string, unknown>,
         });
         // Step 2: Get the Solana public key from the snap
         const result = await window.ethereum.request({
           method: "wallet_invokeSnap",
-          params: [{
+          params: {
             snapId: "npm:@metamask/solana-snap",
             request: { method: "solana_getAccount", params: { addressIndex: 0 } },
-          }] as unknown[],
+          } as unknown as Record<string, unknown>,
         });
         const r = result as { publicKey?: string } | null;
         if (r?.publicKey) {
