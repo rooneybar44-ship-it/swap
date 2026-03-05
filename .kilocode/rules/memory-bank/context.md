@@ -12,6 +12,7 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
 - [x] Coin logos via CryptoIcons CDN (next/image unoptimized), expanded token list to 12 tokens (ETH, USDC, BTC, BNB, SOL, ADA, AVAX, MATIC, DOT, LINK, UNI, USDT)
 - [x] Replaced Phantom wallet with MetaMask-only approach — Solana network now uses MetaMask Solana Snap (`npm:@metamask/solana-snap`) via `wallet_requestSnaps` + `wallet_invokeSnap`. EVM chains use standard `eth_requestAccounts`. Removed all `window.solana` references.
 - [x] Fixed MetaMask Snap params format — `wallet_requestSnaps` and `wallet_invokeSnap` require **object** params (not array). Changed `params: [{...}]` → `params: {...}` for both calls. Also updated `window.ethereum.request` TypeScript type to accept `Record<string, unknown>` in addition to `unknown[]`.
+- [x] Fixed wrong Solana Snap — `npm:@metamask/solana-snap` does not exist (404). Replaced with `npm:@solflare-wallet/solana-snap` (Solflare's official MetaMask Snap). Updated method from `solana_getAccount` → `getPublicKey` with `{ derivationPath: ["0'", "0'"], confirm: true/false }`. Result is a Base58 string directly (not an object).
 
 - [x] Base Next.js 16 setup with App Router
 - [x] TypeScript configuration with strict mode
