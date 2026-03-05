@@ -16,7 +16,64 @@ declare global {
 const CDN = "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color";
 const PARASWAP_API = "https://apiv5.paraswap.io";
 const COINGECKO_API = "https://api.coingecko.com/api/v3";
-const MAINNET_CHAIN_ID = "0x1";
+
+type Network = {
+  id: string;          // hex chainId e.g. "0x1"
+  chainId: number;     // decimal
+  name: string;
+  shortName: string;
+  color: string;
+  icon: string;        // emoji or URL
+  nativeCurrency: string;
+  paraswapNetwork: number | null; // null = not supported by Paraswap
+  rpcUrl: string;
+  blockExplorer: string;
+};
+
+const NETWORKS: Network[] = [
+  {
+    id: "0x1", chainId: 1, name: "Ethereum", shortName: "ETH",
+    color: "#627EEA", icon: "⟠",
+    nativeCurrency: "ETH", paraswapNetwork: 1,
+    rpcUrl: "https://mainnet.infura.io/v3/", blockExplorer: "https://etherscan.io",
+  },
+  {
+    id: "0x89", chainId: 137, name: "Polygon", shortName: "MATIC",
+    color: "#8247E5", icon: "⬡",
+    nativeCurrency: "MATIC", paraswapNetwork: 137,
+    rpcUrl: "https://polygon-rpc.com", blockExplorer: "https://polygonscan.com",
+  },
+  {
+    id: "0x38", chainId: 56, name: "BNB Chain", shortName: "BNB",
+    color: "#F3BA2F", icon: "◈",
+    nativeCurrency: "BNB", paraswapNetwork: 56,
+    rpcUrl: "https://bsc-dataseed.binance.org", blockExplorer: "https://bscscan.com",
+  },
+  {
+    id: "0xa4b1", chainId: 42161, name: "Arbitrum", shortName: "ARB",
+    color: "#28A0F0", icon: "🔵",
+    nativeCurrency: "ETH", paraswapNetwork: 42161,
+    rpcUrl: "https://arb1.arbitrum.io/rpc", blockExplorer: "https://arbiscan.io",
+  },
+  {
+    id: "0xa", chainId: 10, name: "Optimism", shortName: "OP",
+    color: "#FF0420", icon: "🔴",
+    nativeCurrency: "ETH", paraswapNetwork: 10,
+    rpcUrl: "https://mainnet.optimism.io", blockExplorer: "https://optimistic.etherscan.io",
+  },
+  {
+    id: "0xa86a", chainId: 43114, name: "Avalanche", shortName: "AVAX",
+    color: "#E84142", icon: "🔺",
+    nativeCurrency: "AVAX", paraswapNetwork: 43114,
+    rpcUrl: "https://api.avax.network/ext/bc/C/rpc", blockExplorer: "https://snowtrace.io",
+  },
+  {
+    id: "0x2105", chainId: 8453, name: "Base", shortName: "BASE",
+    color: "#0052FF", icon: "🔷",
+    nativeCurrency: "ETH", paraswapNetwork: 8453,
+    rpcUrl: "https://mainnet.base.org", blockExplorer: "https://basescan.org",
+  },
+];
 
 type TokenDef = {
   symbol: string;
@@ -30,16 +87,68 @@ type TokenDef = {
 
 type Token = TokenDef & { balance: number; price: number };
 
-const TOKEN_DEFS: TokenDef[] = [
-  { symbol: "ETH", name: "Ethereum", color: "#627EEA", decimals: 18, address: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", coingeckoId: "ethereum", icon: `${CDN}/eth.png` },
-  { symbol: "USDC", name: "USD Coin", color: "#2775CA", decimals: 6, address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", coingeckoId: "usd-coin", icon: `${CDN}/usdc.png` },
-  { symbol: "USDT", name: "Tether", color: "#26A17B", decimals: 6, address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", coingeckoId: "tether", icon: `${CDN}/usdt.png` },
-  { symbol: "WBTC", name: "Wrapped Bitcoin", color: "#F7931A", decimals: 8, address: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", coingeckoId: "wrapped-bitcoin", icon: `${CDN}/wbtc.png` },
-  { symbol: "LINK", name: "Chainlink", color: "#2A5ADA", decimals: 18, address: "0x514910771AF9Ca656af840dff83E8264EcF986CA", coingeckoId: "chainlink", icon: `${CDN}/link.png` },
-  { symbol: "UNI", name: "Uniswap", color: "#FF007A", decimals: 18, address: "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", coingeckoId: "uniswap", icon: `${CDN}/uni.png` },
-  { symbol: "MATIC", name: "Polygon", color: "#8247E5", decimals: 18, address: "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0", coingeckoId: "matic-network", icon: `${CDN}/matic.png` },
-  { symbol: "AAVE", name: "Aave", color: "#B6509E", decimals: 18, address: "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9", coingeckoId: "aave", icon: `${CDN}/aave.png` },
-];
+const NATIVE = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+
+// Tokens per network
+const TOKENS_BY_CHAIN: Record<string, TokenDef[]> = {
+  "0x1": [
+    { symbol: "ETH", name: "Ethereum", color: "#627EEA", decimals: 18, address: NATIVE, coingeckoId: "ethereum", icon: `${CDN}/eth.png` },
+    { symbol: "USDC", name: "USD Coin", color: "#2775CA", decimals: 6, address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", coingeckoId: "usd-coin", icon: `${CDN}/usdc.png` },
+    { symbol: "USDT", name: "Tether", color: "#26A17B", decimals: 6, address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", coingeckoId: "tether", icon: `${CDN}/usdt.png` },
+    { symbol: "WBTC", name: "Wrapped Bitcoin", color: "#F7931A", decimals: 8, address: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", coingeckoId: "wrapped-bitcoin", icon: `${CDN}/wbtc.png` },
+    { symbol: "LINK", name: "Chainlink", color: "#2A5ADA", decimals: 18, address: "0x514910771AF9Ca656af840dff83E8264EcF986CA", coingeckoId: "chainlink", icon: `${CDN}/link.png` },
+    { symbol: "UNI", name: "Uniswap", color: "#FF007A", decimals: 18, address: "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", coingeckoId: "uniswap", icon: `${CDN}/uni.png` },
+    { symbol: "MATIC", name: "Polygon", color: "#8247E5", decimals: 18, address: "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0", coingeckoId: "matic-network", icon: `${CDN}/matic.png` },
+    { symbol: "AAVE", name: "Aave", color: "#B6509E", decimals: 18, address: "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9", coingeckoId: "aave", icon: `${CDN}/aave.png` },
+  ],
+  "0x89": [
+    { symbol: "MATIC", name: "Polygon", color: "#8247E5", decimals: 18, address: NATIVE, coingeckoId: "matic-network", icon: `${CDN}/matic.png` },
+    { symbol: "USDC", name: "USD Coin", color: "#2775CA", decimals: 6, address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", coingeckoId: "usd-coin", icon: `${CDN}/usdc.png` },
+    { symbol: "USDT", name: "Tether", color: "#26A17B", decimals: 6, address: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F", coingeckoId: "tether", icon: `${CDN}/usdt.png` },
+    { symbol: "WETH", name: "Wrapped Ether", color: "#627EEA", decimals: 18, address: "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619", coingeckoId: "weth", icon: `${CDN}/eth.png` },
+    { symbol: "WBTC", name: "Wrapped Bitcoin", color: "#F7931A", decimals: 8, address: "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6", coingeckoId: "wrapped-bitcoin", icon: `${CDN}/wbtc.png` },
+    { symbol: "LINK", name: "Chainlink", color: "#2A5ADA", decimals: 18, address: "0x53E0bca35eC356BD5ddDFebbD1Fc0fD03FaBad39", coingeckoId: "chainlink", icon: `${CDN}/link.png` },
+    { symbol: "AAVE", name: "Aave", color: "#B6509E", decimals: 18, address: "0xD6DF932A45C0f255f85145f286eA0b292B21C90B", coingeckoId: "aave", icon: `${CDN}/aave.png` },
+  ],
+  "0x38": [
+    { symbol: "BNB", name: "BNB", color: "#F3BA2F", decimals: 18, address: NATIVE, coingeckoId: "binancecoin", icon: `${CDN}/bnb.png` },
+    { symbol: "USDT", name: "Tether", color: "#26A17B", decimals: 18, address: "0x55d398326f99059fF775485246999027B3197955", coingeckoId: "tether", icon: `${CDN}/usdt.png` },
+    { symbol: "USDC", name: "USD Coin", color: "#2775CA", decimals: 18, address: "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d", coingeckoId: "usd-coin", icon: `${CDN}/usdc.png` },
+    { symbol: "WBTC", name: "Wrapped Bitcoin", color: "#F7931A", decimals: 18, address: "0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c", coingeckoId: "wrapped-bitcoin", icon: `${CDN}/wbtc.png` },
+    { symbol: "ETH", name: "Ethereum", color: "#627EEA", decimals: 18, address: "0x2170Ed0880ac9A755fd29B2688956BD959F933F8", coingeckoId: "ethereum", icon: `${CDN}/eth.png` },
+    { symbol: "LINK", name: "Chainlink", color: "#2A5ADA", decimals: 18, address: "0xF8A0BF9cF54Bb92F17374d9e9A321E6a111a51bD", coingeckoId: "chainlink", icon: `${CDN}/link.png` },
+  ],
+  "0xa4b1": [
+    { symbol: "ETH", name: "Ethereum", color: "#627EEA", decimals: 18, address: NATIVE, coingeckoId: "ethereum", icon: `${CDN}/eth.png` },
+    { symbol: "USDC", name: "USD Coin", color: "#2775CA", decimals: 6, address: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8", coingeckoId: "usd-coin", icon: `${CDN}/usdc.png` },
+    { symbol: "USDT", name: "Tether", color: "#26A17B", decimals: 6, address: "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", coingeckoId: "tether", icon: `${CDN}/usdt.png` },
+    { symbol: "WBTC", name: "Wrapped Bitcoin", color: "#F7931A", decimals: 8, address: "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f", coingeckoId: "wrapped-bitcoin", icon: `${CDN}/wbtc.png` },
+    { symbol: "LINK", name: "Chainlink", color: "#2A5ADA", decimals: 18, address: "0xf97f4df75117a78c1A5a0DBb814Af92458539FB4", coingeckoId: "chainlink", icon: `${CDN}/link.png` },
+    { symbol: "UNI", name: "Uniswap", color: "#FF007A", decimals: 18, address: "0xFa7F8980b0f1E64A2062791cc3b0871572f1F7f0", coingeckoId: "uniswap", icon: `${CDN}/uni.png` },
+  ],
+  "0xa": [
+    { symbol: "ETH", name: "Ethereum", color: "#627EEA", decimals: 18, address: NATIVE, coingeckoId: "ethereum", icon: `${CDN}/eth.png` },
+    { symbol: "USDC", name: "USD Coin", color: "#2775CA", decimals: 6, address: "0x7F5c764cBc14f9669B88837ca1490cCa17c31607", coingeckoId: "usd-coin", icon: `${CDN}/usdc.png` },
+    { symbol: "USDT", name: "Tether", color: "#26A17B", decimals: 6, address: "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58", coingeckoId: "tether", icon: `${CDN}/usdt.png` },
+    { symbol: "WBTC", name: "Wrapped Bitcoin", color: "#F7931A", decimals: 8, address: "0x68f180fcCe6836688e9084f035309E29Bf0A2095", coingeckoId: "wrapped-bitcoin", icon: `${CDN}/wbtc.png` },
+    { symbol: "LINK", name: "Chainlink", color: "#2A5ADA", decimals: 18, address: "0x350a791Bfc2C21F9Ed5d10980Dad2e2638ffa7f6", coingeckoId: "chainlink", icon: `${CDN}/link.png` },
+    { symbol: "OP", name: "Optimism", color: "#FF0420", decimals: 18, address: "0x4200000000000000000000000000000000000042", coingeckoId: "optimism", icon: `${CDN}/op.png` },
+  ],
+  "0xa86a": [
+    { symbol: "AVAX", name: "Avalanche", color: "#E84142", decimals: 18, address: NATIVE, coingeckoId: "avalanche-2", icon: `${CDN}/avax.png` },
+    { symbol: "USDC", name: "USD Coin", color: "#2775CA", decimals: 6, address: "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E", coingeckoId: "usd-coin", icon: `${CDN}/usdc.png` },
+    { symbol: "USDT", name: "Tether", color: "#26A17B", decimals: 6, address: "0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7", coingeckoId: "tether", icon: `${CDN}/usdt.png` },
+    { symbol: "WBTC", name: "Wrapped Bitcoin", color: "#F7931A", decimals: 8, address: "0x50b7545627a5162F82A992c33b87aDc75187B218", coingeckoId: "wrapped-bitcoin", icon: `${CDN}/wbtc.png` },
+    { symbol: "LINK", name: "Chainlink", color: "#2A5ADA", decimals: 18, address: "0x5947BB275c521040051D82396192181b413227A3", coingeckoId: "chainlink", icon: `${CDN}/link.png` },
+  ],
+  "0x2105": [
+    { symbol: "ETH", name: "Ethereum", color: "#627EEA", decimals: 18, address: NATIVE, coingeckoId: "ethereum", icon: `${CDN}/eth.png` },
+    { symbol: "USDC", name: "USD Coin", color: "#2775CA", decimals: 6, address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", coingeckoId: "usd-coin", icon: `${CDN}/usdc.png` },
+    { symbol: "USDT", name: "Tether", color: "#26A17B", decimals: 6, address: "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2", coingeckoId: "tether", icon: `${CDN}/usdt.png` },
+    { symbol: "WBTC", name: "Wrapped Bitcoin", color: "#F7931A", decimals: 8, address: "0x1ceA84203673764244E05693e42E6Ace62bE9BA5", coingeckoId: "wrapped-bitcoin", icon: `${CDN}/wbtc.png` },
+    { symbol: "LINK", name: "Chainlink", color: "#2A5ADA", decimals: 18, address: "0x88Fb150BDc53A65fe94Dea0c9BA0a6dAf8C6e196", coingeckoId: "chainlink", icon: `${CDN}/link.png` },
+  ],
+};
 
 function makeToken(def: TokenDef, balance = 0, price = 0): Token {
   return { ...def, balance, price };
@@ -65,10 +174,11 @@ async function fetchERC20Balance(tokenAddress: string, walletAddress: string): P
 }
 
 async function fetchCoinGeckoPrices(ids: string[]): Promise<Record<string, number>> {
-  const res = await fetch(`${COINGECKO_API}/simple/price?ids=${ids.join(",")}&vs_currencies=usd`);
+  const unique = [...new Set(ids)];
+  const res = await fetch(`${COINGECKO_API}/simple/price?ids=${unique.join(",")}&vs_currencies=usd`);
   const data = await res.json() as Record<string, { usd: number }>;
   const out: Record<string, number> = {};
-  for (const id of ids) out[id] = data[id]?.usd ?? 0;
+  for (const id of unique) out[id] = data[id]?.usd ?? 0;
   return out;
 }
 
@@ -83,6 +193,78 @@ function TokenAvatar({ token, size = "md" }: { token: TokenDef; size?: "sm" | "m
       unoptimized
       style={{ borderRadius: "50%", flexShrink: 0 }}
     />
+  );
+}
+
+function NetworkIcon({ network, size = 20 }: { network: Network; size?: number }) {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", justifyContent: "center",
+      width: size, height: size, borderRadius: "50%",
+      background: network.color + "33",
+      fontSize: size * 0.55, lineHeight: 1,
+      border: `1.5px solid ${network.color}55`,
+      flexShrink: 0,
+    }}>
+      {network.icon}
+    </span>
+  );
+}
+
+function NetworkSelectModal({
+  current, onSelect, onClose,
+}: {
+  current: Network;
+  onSelect: (n: Network) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(5,6,20,0.7)", backdropFilter: "blur(6px)" }}
+      onClick={onClose}
+    >
+      <div className="token-modal w-full max-w-sm overflow-hidden animate-fadein" onClick={(e) => e.stopPropagation()}>
+        <div className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 style={{ color: "#e8eaff", fontWeight: 700, fontSize: 17 }}>Select Network</h3>
+            <button
+              onClick={onClose}
+              style={{
+                width: 32, height: 32, borderRadius: 8,
+                background: "#0d0e1a", border: "1px solid #252847",
+                color: "#7b82b0", cursor: "pointer", fontSize: 14,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >✕</button>
+          </div>
+        </div>
+        <div style={{ paddingBottom: 12 }}>
+          {NETWORKS.map((net) => (
+            <button
+              key={net.id}
+              onClick={() => { onSelect(net); onClose(); }}
+              className="token-list-item"
+              style={{
+                width: "100%", display: "flex", alignItems: "center", gap: 12,
+                padding: "12px 20px", background: "none", border: "none",
+                cursor: "pointer", textAlign: "left",
+                borderLeft: net.id === current.id ? `3px solid ${net.color}` : "3px solid transparent",
+              }}
+            >
+              <NetworkIcon network={net} size={36} />
+              <div style={{ flex: 1 }}>
+                <div style={{ color: "#e8eaff", fontWeight: 600, fontSize: 14 }}>{net.name}</div>
+                <div style={{ color: "#6b7299", fontSize: 12 }}>{net.nativeCurrency} · Chain {net.chainId}</div>
+              </div>
+              {net.id === current.id && (
+                <span style={{ color: net.color, fontSize: 12, fontWeight: 700 }}>✓ Active</span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -176,13 +358,15 @@ function TokenSelectModal({
 }
 
 export default function SwapPage() {
-  const [tokens, setTokens] = useState<Token[]>(TOKEN_DEFS.map((t) => makeToken(t)));
-  const [fromToken, setFromToken] = useState<Token>(makeToken(TOKEN_DEFS[0]));
-  const [toToken, setToToken] = useState<Token>(makeToken(TOKEN_DEFS[1]));
+  const [selectedNetwork, setSelectedNetwork] = useState<Network>(NETWORKS[0]);
+  const [tokens, setTokens] = useState<Token[]>(() => (TOKENS_BY_CHAIN["0x1"] ?? []).map((t) => makeToken(t)));
+  const [fromToken, setFromToken] = useState<Token>(() => makeToken((TOKENS_BY_CHAIN["0x1"] ?? [])[0]));
+  const [toToken, setToToken] = useState<Token>(() => makeToken((TOKENS_BY_CHAIN["0x1"] ?? [])[1]));
   const [fromAmount, setFromAmount] = useState("");
   const [toAmount, setToAmount] = useState("");
   const [slippage, setSlippage] = useState("0.5");
   const [modalFor, setModalFor] = useState<"from" | "to" | null>(null);
+  const [networkModalOpen, setNetworkModalOpen] = useState(false);
   const [isSwapping, setIsSwapping] = useState(false);
   const [balancesLoading, setBalancesLoading] = useState(false);
   const [quoteLoading, setQuoteLoading] = useState(false);
@@ -194,7 +378,8 @@ export default function SwapPage() {
   const quoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const connected = !!account;
-  const isMainnet = chainId === MAINNET_CHAIN_ID;
+  // The wallet's current chain matches the selected network
+  const isOnSelectedNetwork = chainId?.toLowerCase() === selectedNetwork.id.toLowerCase();
 
   function showToast(msg: string, type: "ok" | "err" | "info" = "ok") {
     setToast(msg);
@@ -206,16 +391,29 @@ export default function SwapPage() {
     return updatedList.find((t) => t.symbol === sym);
   }, []);
 
-  const loadBalancesAndPrices = useCallback(async (addr: string) => {
+  // When network changes, reset token list
+  const applyNetwork = useCallback((net: Network) => {
+    const defs = TOKENS_BY_CHAIN[net.id] ?? [];
+    const newTokens = defs.map((t) => makeToken(t));
+    setTokens(newTokens);
+    setFromToken(newTokens[0] ?? makeToken(defs[0]));
+    setToToken(newTokens[1] ?? makeToken(defs[1]));
+    setFromAmount("");
+    setToAmount("");
+    setExchangeRate(null);
+  }, []);
+
+  const loadBalancesAndPrices = useCallback(async (addr: string, net: Network) => {
     if (!window.ethereum) return;
     setBalancesLoading(true);
+    const defs = TOKENS_BY_CHAIN[net.id] ?? [];
     try {
-      const priceMap = await fetchCoinGeckoPrices(TOKEN_DEFS.map((t) => t.coingeckoId));
+      const priceMap = await fetchCoinGeckoPrices(defs.map((t) => t.coingeckoId));
 
       const balances = await Promise.all(
-        TOKEN_DEFS.map(async (token) => {
+        defs.map(async (token) => {
           try {
-            if (token.address.toLowerCase() === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee") {
+            if (token.address.toLowerCase() === NATIVE.toLowerCase()) {
               const bal = await window.ethereum!.request({ method: "eth_getBalance", params: [addr, "latest"] }) as string;
               return parseInt(bal, 16) / 1e18;
             } else {
@@ -226,10 +424,10 @@ export default function SwapPage() {
         })
       );
 
-      const updated = TOKEN_DEFS.map((t, i) => makeToken(t, balances[i], priceMap[t.coingeckoId] ?? 0));
+      const updated = defs.map((t, i) => makeToken(t, balances[i], priceMap[t.coingeckoId] ?? 0));
       setTokens(updated);
-      setFromToken((prev) => syncToken(prev.symbol, updated) ?? prev);
-      setToToken((prev) => syncToken(prev.symbol, updated) ?? prev);
+      setFromToken((prev) => syncToken(prev.symbol, updated) ?? updated[0]);
+      setToToken((prev) => syncToken(prev.symbol, updated) ?? updated[1]);
     } catch (e) {
       console.error("Failed to load balances", e);
     } finally {
@@ -237,17 +435,25 @@ export default function SwapPage() {
     }
   }, [syncToken]);
 
-  // Fetch quote from Paraswap, fallback to price-based calc
-  const fetchQuote = useCallback(async (amount: string, from: Token, to: Token) => {
+  const fetchQuote = useCallback(async (amount: string, from: Token, to: Token, net: Network) => {
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
       setToAmount("");
       setExchangeRate(null);
       return;
     }
+    if (!net.paraswapNetwork) {
+      // Fallback to price-based
+      if (from.price > 0 && to.price > 0) {
+        const out = (Number(amount) * from.price) / to.price;
+        setToAmount(out.toFixed(6));
+        setExchangeRate(`1 ${from.symbol} ≈ ${(from.price / to.price).toFixed(6)} ${to.symbol}`);
+      }
+      return;
+    }
     setQuoteLoading(true);
     try {
       const amtRaw = BigInt(Math.round(Number(amount) * Math.pow(10, from.decimals))).toString();
-      const url = `${PARASWAP_API}/prices?srcToken=${from.address}&srcDecimals=${from.decimals}&destToken=${to.address}&destDecimals=${to.decimals}&amount=${amtRaw}&side=SELL&network=1`;
+      const url = `${PARASWAP_API}/prices?srcToken=${from.address}&srcDecimals=${from.decimals}&destToken=${to.address}&destDecimals=${to.decimals}&amount=${amtRaw}&side=SELL&network=${net.paraswapNetwork}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error("quote_api_fail");
       const data = await res.json() as { priceRoute: { destAmount: string } };
@@ -256,7 +462,6 @@ export default function SwapPage() {
       const rate = (destAmt / Number(amount)).toFixed(6);
       setExchangeRate(`1 ${from.symbol} = ${rate} ${to.symbol}`);
     } catch {
-      // Fallback: use CoinGecko prices
       if (from.price > 0 && to.price > 0) {
         const out = (Number(amount) * from.price) / to.price;
         setToAmount(out.toFixed(6));
@@ -269,9 +474,9 @@ export default function SwapPage() {
 
   useEffect(() => {
     if (quoteTimer.current) clearTimeout(quoteTimer.current);
-    quoteTimer.current = setTimeout(() => fetchQuote(fromAmount, fromToken, toToken), 600);
+    quoteTimer.current = setTimeout(() => fetchQuote(fromAmount, fromToken, toToken, selectedNetwork), 600);
     return () => { if (quoteTimer.current) clearTimeout(quoteTimer.current); };
-  }, [fromAmount, fromToken, toToken, fetchQuote]);
+  }, [fromAmount, fromToken, toToken, selectedNetwork, fetchQuote]);
 
   useEffect(() => {
     if (!window.ethereum) return;
@@ -279,23 +484,40 @@ export default function SwapPage() {
       const arr = accs as string[];
       setAccount(arr[0] ?? null);
     };
-    const onChainChanged = (chain: unknown) => setChainId(chain as string);
+    const onChainChanged = (chain: unknown) => {
+      const c = chain as string;
+      setChainId(c);
+      // Auto-update selected network if we know it
+      const matched = NETWORKS.find((n) => n.id.toLowerCase() === c.toLowerCase());
+      if (matched) {
+        setSelectedNetwork(matched);
+        applyNetwork(matched);
+      }
+    };
     window.ethereum.on("accountsChanged", onAccountsChanged);
     window.ethereum.on("chainChanged", onChainChanged);
     window.ethereum.request({ method: "eth_accounts" }).then((a) => {
       const arr = a as string[];
       if (arr[0]) setAccount(arr[0]);
     }).catch(() => {});
-    window.ethereum.request({ method: "eth_chainId" }).then((c) => setChainId(c as string)).catch(() => {});
+    window.ethereum.request({ method: "eth_chainId" }).then((c) => {
+      const chain = c as string;
+      setChainId(chain);
+      const matched = NETWORKS.find((n) => n.id.toLowerCase() === chain.toLowerCase());
+      if (matched) {
+        setSelectedNetwork(matched);
+        applyNetwork(matched);
+      }
+    }).catch(() => {});
     return () => {
       window.ethereum?.removeListener("accountsChanged", onAccountsChanged);
       window.ethereum?.removeListener("chainChanged", onChainChanged);
     };
-  }, []);
+  }, [applyNetwork]);
 
   useEffect(() => {
-    if (account && isMainnet) loadBalancesAndPrices(account);
-  }, [account, isMainnet, loadBalancesAndPrices]);
+    if (account && isOnSelectedNetwork) loadBalancesAndPrices(account, selectedNetwork);
+  }, [account, isOnSelectedNetwork, selectedNetwork, loadBalancesAndPrices]);
 
   async function connectWallet() {
     if (!window.ethereum) {
@@ -308,14 +530,41 @@ export default function SwapPage() {
     } catch { /* user rejected */ }
   }
 
-  async function switchToMainnet() {
+  async function switchToNetwork(net: Network) {
     try {
       await window.ethereum?.request({
         method: "wallet_switchEthereumChain",
-        params: [{ chainId: MAINNET_CHAIN_ID }],
+        params: [{ chainId: net.id }],
       });
-    } catch {
-      showToast("❌ Failed to switch to Ethereum Mainnet", "err");
+    } catch (err) {
+      // Chain not added to MetaMask — try adding it
+      const e = err as { code?: number };
+      if (e.code === 4902) {
+        try {
+          await window.ethereum?.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: net.id,
+              chainName: net.name,
+              nativeCurrency: { name: net.nativeCurrency, symbol: net.nativeCurrency, decimals: 18 },
+              rpcUrls: [net.rpcUrl],
+              blockExplorerUrls: [net.blockExplorer],
+            }],
+          });
+        } catch {
+          showToast(`❌ Failed to add ${net.name}`, "err");
+        }
+      } else {
+        showToast(`❌ Failed to switch to ${net.name}`, "err");
+      }
+    }
+  }
+
+  async function handleNetworkSelect(net: Network) {
+    setSelectedNetwork(net);
+    applyNetwork(net);
+    if (connected) {
+      await switchToNetwork(net);
     }
   }
 
@@ -328,7 +577,7 @@ export default function SwapPage() {
 
   async function handleSwap() {
     if (!connected || !account) return;
-    if (!isMainnet) { await switchToMainnet(); return; }
+    if (!isOnSelectedNetwork) { await switchToNetwork(selectedNetwork); return; }
 
     const amt = Number(fromAmount);
     if (!fromAmount || isNaN(amt) || amt <= 0) return;
@@ -336,20 +585,22 @@ export default function SwapPage() {
       showToast(`❌ Insufficient ${fromToken.symbol} balance`, "err");
       return;
     }
+    if (!selectedNetwork.paraswapNetwork) {
+      showToast("❌ Swaps not supported on this network yet", "err");
+      return;
+    }
 
     setIsSwapping(true);
     try {
       const amtRaw = BigInt(Math.round(amt * Math.pow(10, fromToken.decimals))).toString();
 
-      // Step 1: Get price route
       showToast("🔍 Getting best route...", "info");
-      const priceUrl = `${PARASWAP_API}/prices?srcToken=${fromToken.address}&srcDecimals=${fromToken.decimals}&destToken=${toToken.address}&destDecimals=${toToken.decimals}&amount=${amtRaw}&side=SELL&network=1&userAddress=${account}`;
+      const priceUrl = `${PARASWAP_API}/prices?srcToken=${fromToken.address}&srcDecimals=${fromToken.decimals}&destToken=${toToken.address}&destDecimals=${toToken.decimals}&amount=${amtRaw}&side=SELL&network=${selectedNetwork.paraswapNetwork}&userAddress=${account}`;
       const priceRes = await fetch(priceUrl);
       if (!priceRes.ok) throw new Error("Failed to get price route");
       const priceData = await priceRes.json() as { priceRoute: unknown };
 
-      // Step 2: Build transaction
-      const buildRes = await fetch(`${PARASWAP_API}/transactions/1?ignoreChecks=true`, {
+      const buildRes = await fetch(`${PARASWAP_API}/transactions/${selectedNetwork.paraswapNetwork}?ignoreChecks=true`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -369,9 +620,8 @@ export default function SwapPage() {
       }
       const txData = await buildRes.json() as { to: string; data: string; value?: string; gas?: string };
 
-      // Step 3: ERC-20 approval if needed
-      const isNativeETH = fromToken.address.toLowerCase() === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
-      if (!isNativeETH) {
+      const isNativeToken = fromToken.address.toLowerCase() === NATIVE.toLowerCase();
+      if (!isNativeToken) {
         const allowanceHex = await window.ethereum!.request({
           method: "eth_call",
           params: [{ to: fromToken.address, data: encodeAllowance(account, txData.to) }, "latest"],
@@ -396,7 +646,6 @@ export default function SwapPage() {
         }
       }
 
-      // Step 4: Send swap
       const txHash = await window.ethereum!.request({
         method: "eth_sendTransaction",
         params: [{
@@ -411,9 +660,7 @@ export default function SwapPage() {
       showToast(`✅ Swap submitted! ${txHash.slice(0, 8)}...${txHash.slice(-6)}`, "ok");
       setFromAmount("");
       setToAmount("");
-
-      // Reload balances after confirmation
-      setTimeout(() => loadBalancesAndPrices(account), 8000);
+      setTimeout(() => loadBalancesAndPrices(account, selectedNetwork), 8000);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
       if (!msg.toLowerCase().includes("user rejected") && !msg.toLowerCase().includes("user denied")) {
@@ -465,52 +712,67 @@ export default function SwapPage() {
           </div>
         </div>
 
-        <nav style={{ display: "flex", gap: 4 }} className="hidden md:flex">
-          <button style={{ padding: "8px 16px", borderRadius: 10, fontSize: 14, fontWeight: 500, border: "none", cursor: "pointer", background: "rgba(108,99,255,0.2)", color: "#9b8fff" }}>Swap</button>
-        </nav>
-
-        {connected && !isMainnet && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {/* Network selector */}
           <button
-            onClick={switchToMainnet}
+            onClick={() => setNetworkModalOpen(true)}
             style={{
-              padding: "9px 18px", borderRadius: 12, fontSize: 13, fontWeight: 600,
-              background: "rgba(239,68,68,0.15)", color: "#f87171",
-              border: "1.5px solid rgba(239,68,68,0.3)", cursor: "pointer",
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "8px 14px", borderRadius: 12, fontSize: 13, fontWeight: 600,
+              background: "#13152a", border: `1.5px solid ${selectedNetwork.color}44`,
+              color: "#e8eaff", cursor: "pointer",
             }}
           >
-            ⚠️ Switch to Mainnet
+            <NetworkIcon network={selectedNetwork} size={20} />
+            <span>{selectedNetwork.shortName}</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" style={{ color: "#6b7299" }}>
+              <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </button>
-        )}
 
-        <button
-          onClick={connected ? () => setAccount(null) : connectWallet}
-          style={{
-            display: "flex", alignItems: "center", gap: 8,
-            padding: "9px 18px", borderRadius: 12, fontSize: 14, fontWeight: 600,
-            cursor: "pointer", transition: "all 0.2s",
-            background: connected ? "rgba(34,197,94,0.12)" : "linear-gradient(135deg, #4f6ef7, #6c8bff)",
-            color: connected ? "#4ade80" : "white",
-            border: connected ? "1.5px solid rgba(34,197,94,0.3)" : "none",
-            boxShadow: connected ? "none" : "0 4px 12px rgba(79,110,247,0.3)",
-          }}
-        >
-          {connected ? (
-            <>
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
-              {account!.slice(0, 6)}...{account!.slice(-4)}
-              {balancesLoading && <span style={{ fontSize: 11, opacity: 0.7 }}>⟳</span>}
-            </>
-          ) : (
-            <>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <rect x="2" y="7" width="20" height="14" rx="2" stroke="white" strokeWidth="2"/>
-                <path d="M16 3H8a2 2 0 00-2 2v2h12V5a2 2 0 00-2-2z" stroke="white" strokeWidth="2"/>
-                <circle cx="17" cy="14" r="1.5" fill="white"/>
-              </svg>
-              Connect Wallet
-            </>
+          {connected && !isOnSelectedNetwork && (
+            <button
+              onClick={() => switchToNetwork(selectedNetwork)}
+              style={{
+                padding: "9px 18px", borderRadius: 12, fontSize: 13, fontWeight: 600,
+                background: "rgba(239,68,68,0.15)", color: "#f87171",
+                border: "1.5px solid rgba(239,68,68,0.3)", cursor: "pointer",
+              }}
+            >
+              ⚠️ Switch Network
+            </button>
           )}
-        </button>
+
+          <button
+            onClick={connected ? () => setAccount(null) : connectWallet}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "9px 18px", borderRadius: 12, fontSize: 14, fontWeight: 600,
+              cursor: "pointer", transition: "all 0.2s",
+              background: connected ? "rgba(34,197,94,0.12)" : "linear-gradient(135deg, #4f6ef7, #6c8bff)",
+              color: connected ? "#4ade80" : "white",
+              border: connected ? "1.5px solid rgba(34,197,94,0.3)" : "none",
+              boxShadow: connected ? "none" : "0 4px 12px rgba(79,110,247,0.3)",
+            }}
+          >
+            {connected ? (
+              <>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
+                {account!.slice(0, 6)}...{account!.slice(-4)}
+                {balancesLoading && <span style={{ fontSize: 11, opacity: 0.7 }}>⟳</span>}
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <rect x="2" y="7" width="20" height="14" rx="2" stroke="white" strokeWidth="2"/>
+                  <path d="M16 3H8a2 2 0 00-2 2v2h12V5a2 2 0 00-2-2z" stroke="white" strokeWidth="2"/>
+                  <circle cx="17" cy="14" r="1.5" fill="white"/>
+                </svg>
+                Connect Wallet
+              </>
+            )}
+          </button>
+        </div>
       </header>
 
       {/* Main */}
@@ -553,7 +815,19 @@ export default function SwapPage() {
 
           {/* Card header */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-            <div style={{ fontWeight: 700, fontSize: 16, color: "#e8eaff" }}>Swap</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ fontWeight: 700, fontSize: 16, color: "#e8eaff" }}>Swap</div>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 5,
+                background: selectedNetwork.color + "22",
+                border: `1px solid ${selectedNetwork.color}44`,
+                borderRadius: 8, padding: "3px 8px",
+                fontSize: 11, fontWeight: 600, color: selectedNetwork.color,
+              }}>
+                <NetworkIcon network={selectedNetwork} size={14} />
+                {selectedNetwork.name}
+              </div>
+            </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span className="badge-safe">🔒 Non-custodial</span>
               <div style={{ display: "flex", gap: 4, marginLeft: 8 }}>
@@ -583,7 +857,7 @@ export default function SwapPage() {
               <span style={{ fontSize: 12, color: "#6b7299" }}>
                 Balance:{" "}
                 <span style={{ color: "#a0a8d0", fontWeight: 600 }}>
-                  {connected && isMainnet
+                  {connected && isOnSelectedNetwork
                     ? balancesLoading
                       ? "..."
                       : `${fromToken.balance.toFixed(4)} ${fromToken.symbol}`
@@ -619,7 +893,7 @@ export default function SwapPage() {
                 )}
               </div>
             </div>
-            {connected && isMainnet && fromToken.balance > 0 && (
+            {connected && isOnSelectedNetwork && fromToken.balance > 0 && (
               <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
                 {["25%", "50%", "75%", "MAX"].map((pct) => (
                   <button
@@ -662,7 +936,7 @@ export default function SwapPage() {
               <span style={{ fontSize: 12, color: "#6b7299" }}>
                 Balance:{" "}
                 <span style={{ color: "#a0a8d0", fontWeight: 600 }}>
-                  {connected && isMainnet
+                  {connected && isOnSelectedNetwork
                     ? balancesLoading
                       ? "..."
                       : `${toToken.balance.toFixed(4)} ${toToken.symbol}`
@@ -703,8 +977,8 @@ export default function SwapPage() {
               {[
                 { label: "Exchange Rate", value: exchangeRate },
                 { label: "Slippage Tolerance", value: `${slippage}%` },
-                { label: "Network Fee", value: "~$2–5 (ETH gas)" },
-                { label: "Routing", value: "Paraswap DEX Aggregator" },
+                { label: "Network", value: selectedNetwork.name },
+                { label: "Routing", value: selectedNetwork.paraswapNetwork ? "Paraswap DEX Aggregator" : "Price estimate" },
               ].map((row) => (
                 <div key={row.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "3px 0" }}>
                   <span style={{ fontSize: 12, color: "#6b7299" }}>{row.label}</span>
@@ -720,8 +994,8 @@ export default function SwapPage() {
             onClick={
               !connected
                 ? connectWallet
-                : connected && !isMainnet
-                ? switchToMainnet
+                : connected && !isOnSelectedNetwork
+                ? () => switchToNetwork(selectedNetwork)
                 : handleSwap
             }
             className="btn-primary"
@@ -737,8 +1011,8 @@ export default function SwapPage() {
               </span>
             ) : !connected ? (
               "Connect Wallet to Swap"
-            ) : !isMainnet ? (
-              "Switch to Ethereum Mainnet"
+            ) : !isOnSelectedNetwork ? (
+              `Switch to ${selectedNetwork.name}`
             ) : !fromAmount ? (
               "Enter an Amount"
             ) : quoteLoading ? (
@@ -754,7 +1028,7 @@ export default function SwapPage() {
           {[
             { icon: "🔒", text: "Non-custodial" },
             { icon: "⚡", text: "Paraswap routing" },
-            { icon: "🌐", text: "Ethereum Mainnet" },
+            { icon: "🌐", text: selectedNetwork.name },
             { icon: "📊", text: "Best price routing" },
           ].map((b) => (
             <div key={b.text} style={{
@@ -795,6 +1069,15 @@ export default function SwapPage() {
             else setToToken(token);
           }}
           onClose={() => setModalFor(null)}
+        />
+      )}
+
+      {/* Network modal */}
+      {networkModalOpen && (
+        <NetworkSelectModal
+          current={selectedNetwork}
+          onSelect={handleNetworkSelect}
+          onClose={() => setNetworkModalOpen(false)}
         />
       )}
     </div>
