@@ -410,14 +410,6 @@ function PriceTicker() {
       background: "rgba(13,14,26,0.85)", borderTop: "1px solid rgba(108,99,255,0.15)", borderBottom: "1px solid rgba(108,99,255,0.15)",
       overflow: "hidden", height: 40,
     }}>
-      <style>{`
-        @keyframes ticker-scroll {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        .ticker-track { display: flex; animation: ticker-scroll 40s linear infinite; width: max-content; }
-        .ticker-track:hover { animation-play-state: paused; }
-      `}</style>
       <div className="ticker-track" style={{ alignItems: "center", height: 40 }}>
         {items.map((coin, i) => {
           const p = prices[coin.id];
