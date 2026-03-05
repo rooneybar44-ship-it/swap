@@ -676,7 +676,7 @@ export default function SwapPage() {
       method: "wallet_invokeSnap",
       params: [{
         snapId: "npm:@metamask/solana-snap",
-        request: { method: "getAccount" },
+        request: { method: "solana_getAccount", params: { addressIndex: 0 } },
       }] as unknown[],
     }).then((result) => {
       const r = result as { publicKey?: string } | null;
@@ -710,7 +710,7 @@ export default function SwapPage() {
           method: "wallet_invokeSnap",
           params: [{
             snapId: "npm:@metamask/solana-snap",
-            request: { method: "getAccount" },
+            request: { method: "solana_getAccount", params: { addressIndex: 0 } },
           }] as unknown[],
         });
         const r = result as { publicKey?: string } | null;
