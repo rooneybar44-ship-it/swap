@@ -17,10 +17,12 @@ declare global {
 const CDN = "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color";
 const PARASWAP_API = "https://apiv5.paraswap.io";
 const COINGECKO_API = "https://api.coingecko.com/api/v3";
+const SOLANA_RPC = "https://api.mainnet-beta.solana.com";
+const SOLFLARE_SNAP_ID = "npm:@solflare-wallet/solana-snap";
 
 type Network = {
-  id: string;          // hex chainId e.g. "0x1"
-  chainId: number;     // decimal
+  id: string;          // hex chainId e.g. "0x1", or "solana" for Solana
+  chainId: number;     // decimal (0 for Solana)
   name: string;
   shortName: string;
   color: string;
@@ -29,6 +31,7 @@ type Network = {
   paraswapNetwork: number | null; // null = not supported by Paraswap
   rpcUrl: string;
   blockExplorer: string;
+  isSolana?: boolean;
 };
 
 const NETWORKS: Network[] = [
@@ -74,6 +77,13 @@ const NETWORKS: Network[] = [
     nativeCurrency: "ETH", paraswapNetwork: 8453,
     rpcUrl: "https://mainnet.base.org", blockExplorer: "https://basescan.org",
   },
+  {
+    id: "solana", chainId: 0, name: "Solana", shortName: "SOL",
+    color: "#9945FF", icon: `${CDN}/sol.png`,
+    nativeCurrency: "SOL", paraswapNetwork: null,
+    rpcUrl: SOLANA_RPC, blockExplorer: "https://solscan.io",
+    isSolana: true,
+  },
 ];
 
 type TokenDef = {
@@ -90,6 +100,7 @@ type TokenDef = {
 type Token = TokenDef & { balance: number; price: number };
 
 const NATIVE = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
+const SOL_NATIVE = "So11111111111111111111111111111111111111112";
 
 // Tokens per network
 const TOKENS_BY_CHAIN: Record<string, TokenDef[]> = {
@@ -150,6 +161,14 @@ const TOKENS_BY_CHAIN: Record<string, TokenDef[]> = {
     { symbol: "WBTC", name: "Wrapped Bitcoin", color: "#F7931A", decimals: 8, address: "0x1ceA84203673764244E05693e42E6Ace62bE9BA5", coingeckoId: "wrapped-bitcoin", icon: `${CDN}/wbtc.png` },
     { symbol: "LINK", name: "Chainlink", color: "#2A5ADA", decimals: 18, address: "0x88Fb150BDc53A65fe94Dea0c9BA0a6dAf8C6e196", coingeckoId: "chainlink", icon: `${CDN}/link.png` },
   ],
+  "solana": [
+    { symbol: "SOL", name: "Solana", color: "#9945FF", decimals: 9, address: SOL_NATIVE, coingeckoId: "solana", icon: `${CDN}/sol.png` },
+    { symbol: "USDC", name: "USD Coin", color: "#2775CA", decimals: 6, address: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", coingeckoId: "usd-coin", icon: `${CDN}/usdc.png` },
+    { symbol: "USDT", name: "Tether", color: "#26A17B", decimals: 6, address: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", coingeckoId: "tether", icon: `${CDN}/usdt.png` },
+    { symbol: "RAY", name: "Raydium", color: "#6C5CE7", decimals: 6, address: "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R", coingeckoId: "raydium", icon: `${CDN}/ray.png` },
+    { symbol: "BONK", name: "Bonk", color: "#F9A825", decimals: 5, address: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", coingeckoId: "bonk", icon: `${CDN}/bonk.png` },
+    { symbol: "JUP", name: "Jupiter", color: "#00BFA5", decimals: 6, address: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN", coingeckoId: "jupiter-exchange-solana", icon: `${CDN}/jup.png` },
+  ],
 };
 
 function makeToken(def: TokenDef, balance = 0, price = 0): Token {
@@ -183,6 +202,60 @@ async function fetchCoinGeckoPrices(ids: string[]): Promise<Record<string, numbe
   for (const id of unique) out[id] = data[id]?.usd ?? 0;
   return out;
 }
+
+// ─── Solana RPC helpers ──────────────────────────────────────────────────────
+
+async function solanaRpc(method: string, params: unknown[]): Promise<unknown> {
+  const res = await fetch(SOLANA_RPC, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+  });
+  const data = await res.json() as { result?: unknown; error?: { message: string } };
+  if (data.error) throw new Error(data.error.message);
+  return data.result;
+}
+
+async function fetchSolBalance(pubkey: string): Promise<number> {
+  const result = await solanaRpc("getBalance", [pubkey]) as { value: number };
+  return result.value / 1e9; // lamports to SOL
+}
+
+async function fetchSplTokenBalance(ownerPubkey: string, mintAddress: string): Promise<number> {
+  const result = await solanaRpc("getTokenAccountsByOwner", [
+    ownerPubkey,
+    { mint: mintAddress },
+    { encoding: "jsonParsed" },
+  ]) as { value: Array<{ account: { data: { parsed: { info: { tokenAmount: { uiAmount: number } } } } } }> };
+  if (result.value.length === 0) return 0;
+  return result.value[0].account.data.parsed.info.tokenAmount.uiAmount;
+}
+
+// ─── MetaMask Snap helpers for Solana ────────────────────────────────────────
+
+async function installSolanaSnap(): Promise<void> {
+  await window.ethereum!.request({
+    method: "wallet_requestSnaps",
+    params: { [SOLFLARE_SNAP_ID]: {} },
+  });
+}
+
+async function getSolanaAddressViaSnap(): Promise<string> {
+  const result = await window.ethereum!.request({
+    method: "wallet_invokeSnap",
+    params: {
+      snapId: SOLFLARE_SNAP_ID,
+      request: {
+        method: "getPublicKey",
+        params: { derivationPath: ["44'", "501'", "0'", "0'"] },
+      },
+    },
+  });
+  // Result is a base58 public key string
+  return result as string;
+}
+
+// ─── Components ──────────────────────────────────────────────────────────────
 
 function TokenAvatar({ token, size = "md" }: { token: TokenDef; size?: "sm" | "md" | "lg" }) {
   const dim = size === "sm" ? 28 : size === "lg" ? 44 : 36;
@@ -256,7 +329,9 @@ function NetworkSelectModal({
               <NetworkIcon network={net} size={36} />
               <div style={{ flex: 1 }}>
                 <div style={{ color: "#e8eaff", fontWeight: 600, fontSize: 14 }}>{net.name}</div>
-                <div style={{ color: "#6b7299", fontSize: 12 }}>{net.nativeCurrency} · Chain {net.chainId}</div>
+                <div style={{ color: "#6b7299", fontSize: 12 }}>
+                  {net.nativeCurrency} {net.isSolana ? "· Solana" : `· Chain ${net.chainId}`}
+                </div>
               </div>
               {net.id === current.id && (
                 <span style={{ color: net.color, fontSize: 12, fontWeight: 700 }}>✓ Active</span>
@@ -462,12 +537,15 @@ export default function SwapPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [toastType, setToastType] = useState<"ok" | "err" | "info">("ok");
   const [account, setAccount] = useState<string | null>(null);
+  const [solanaAccount, setSolanaAccount] = useState<string | null>(null);
   const [chainId, setChainId] = useState<string | null>(null);
-  const [exchangeRate, setExchangeRate] = useState<string | null>(null);
   const quoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [exchangeRate, setExchangeRate] = useState<string | null>(null);
 
-  const connected = !!account;
-  const isOnSelectedNetwork = chainId?.toLowerCase() === selectedNetwork.id.toLowerCase();
+  const isSolana = !!selectedNetwork.isSolana;
+  const activeAccount = isSolana ? solanaAccount : account;
+  const connected = !!activeAccount;
+  const isOnSelectedNetwork = isSolana ? !!solanaAccount : chainId?.toLowerCase() === selectedNetwork.id.toLowerCase();
 
   function showToast(msg: string, type: "ok" | "err" | "info" = "ok") {
     setToast(msg);
@@ -491,26 +569,45 @@ export default function SwapPage() {
     setExchangeRate(null);
   }, []);
 
+  // ─── Load balances (EVM or Solana) ─────────────────────────────────────────
   const loadBalancesAndPrices = useCallback(async (addr: string, net: Network) => {
-    if (!window.ethereum) return;
     setBalancesLoading(true);
     const defs = TOKENS_BY_CHAIN[net.id] ?? [];
     try {
       const priceMap = await fetchCoinGeckoPrices(defs.map((t) => t.coingeckoId));
 
-      const balances = await Promise.all(
-        defs.map(async (token) => {
-          try {
-            if (token.address.toLowerCase() === NATIVE.toLowerCase()) {
-              const bal = await window.ethereum!.request({ method: "eth_getBalance", params: [addr, "latest"] }) as string;
-              return parseInt(bal, 16) / 1e18;
-            } else {
-              const raw = await fetchERC20Balance(token.address, addr);
-              return parseInt(raw, 16) / Math.pow(10, token.decimals);
-            }
-          } catch { return 0; }
-        })
-      );
+      let balances: number[];
+
+      if (net.isSolana) {
+        // Solana: fetch SOL balance + SPL token balances via JSON-RPC
+        balances = await Promise.all(
+          defs.map(async (token) => {
+            try {
+              if (token.address === SOL_NATIVE) {
+                return await fetchSolBalance(addr);
+              } else {
+                return await fetchSplTokenBalance(addr, token.address);
+              }
+            } catch { return 0; }
+          })
+        );
+      } else {
+        // EVM: fetch via MetaMask
+        if (!window.ethereum) { setBalancesLoading(false); return; }
+        balances = await Promise.all(
+          defs.map(async (token) => {
+            try {
+              if (token.address.toLowerCase() === NATIVE.toLowerCase()) {
+                const bal = await window.ethereum!.request({ method: "eth_getBalance", params: [addr, "latest"] }) as string;
+                return parseInt(bal, 16) / 1e18;
+              } else {
+                const raw = await fetchERC20Balance(token.address, addr);
+                return parseInt(raw, 16) / Math.pow(10, token.decimals);
+              }
+            } catch { return 0; }
+          })
+        );
+      }
 
       const updated = defs.map((t, i) => makeToken(t, balances[i], t.fixedPrice ?? priceMap[t.coingeckoId] ?? 0));
       setTokens(updated);
@@ -566,6 +663,7 @@ export default function SwapPage() {
     return () => { if (quoteTimer.current) clearTimeout(quoteTimer.current); };
   }, [fromAmount, fromToken, toToken, selectedNetwork, fetchQuote]);
 
+  // ─── EVM event listeners ───────────────────────────────────────────────────
   useEffect(() => {
     if (!window.ethereum) return;
     const onAccountsChanged = (accs: unknown) => {
@@ -576,7 +674,7 @@ export default function SwapPage() {
       const c = chain as string;
       setChainId(c);
       // Auto-update selected network if we know it
-      const matched = NETWORKS.find((n) => n.id.toLowerCase() === c.toLowerCase());
+      const matched = NETWORKS.find((n) => !n.isSolana && n.id.toLowerCase() === c.toLowerCase());
       if (matched) {
         setSelectedNetwork(matched);
         applyNetwork(matched);
@@ -591,7 +689,7 @@ export default function SwapPage() {
     window.ethereum.request({ method: "eth_chainId" }).then((c) => {
       const chain = c as string;
       setChainId(chain);
-      const matched = NETWORKS.find((n) => n.id.toLowerCase() === chain.toLowerCase());
+      const matched = NETWORKS.find((n) => !n.isSolana && n.id.toLowerCase() === chain.toLowerCase());
       if (matched) {
         setSelectedNetwork(matched);
         applyNetwork(matched);
@@ -603,26 +701,59 @@ export default function SwapPage() {
     };
   }, [applyNetwork]);
 
+  // ─── Load balances when account/network changes ────────────────────────────
   useEffect(() => {
-    if (account && isOnSelectedNetwork) loadBalancesAndPrices(account, selectedNetwork);
-  }, [account, isOnSelectedNetwork, selectedNetwork, loadBalancesAndPrices]);
+    if (activeAccount && isOnSelectedNetwork) loadBalancesAndPrices(activeAccount, selectedNetwork);
+  }, [activeAccount, isOnSelectedNetwork, selectedNetwork, loadBalancesAndPrices]);
+
+  // ─── Wallet connection ─────────────────────────────────────────────────────
 
   async function connectWallet() {
     if (!window.ethereum) {
       alert("MetaMask not found. Please install MetaMask browser extension from metamask.io");
       return;
     }
-    try {
-      const accs = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
-      if (accs[0]) setAccount(accs[0]);
-    } catch { /* user rejected */ }
+
+    if (isSolana) {
+      // Connect to Solana via MetaMask Snap
+      try {
+        showToast("🔌 Installing Solana Snap...", "info");
+        await installSolanaSnap();
+        showToast("🔑 Getting Solana address...", "info");
+        const pubkey = await getSolanaAddressViaSnap();
+        setSolanaAccount(pubkey);
+        showToast(`✅ Connected to Solana: ${pubkey.slice(0, 6)}...${pubkey.slice(-4)}`, "ok");
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Unknown error";
+        if (!msg.toLowerCase().includes("user rejected") && !msg.toLowerCase().includes("user denied")) {
+          showToast(`❌ Failed to connect Solana via MetaMask Snap: ${msg.slice(0, 60)}`, "err");
+        }
+      }
+    } else {
+      // EVM connect
+      try {
+        const accs = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
+        if (accs[0]) setAccount(accs[0]);
+      } catch { /* user rejected */ }
+    }
   }
 
   function disconnectWallet() {
-    setAccount(null);
+    if (isSolana) {
+      setSolanaAccount(null);
+    } else {
+      setAccount(null);
+    }
   }
 
   async function switchToNetwork(net: Network) {
+    if (net.isSolana) {
+      // For Solana, we just need to connect via Snap if not already connected
+      if (!solanaAccount) {
+        await connectWallet();
+      }
+      return;
+    }
     try {
       await window.ethereum?.request({
         method: "wallet_switchEthereumChain",
@@ -655,7 +786,12 @@ export default function SwapPage() {
   async function handleNetworkSelect(net: Network) {
     setSelectedNetwork(net);
     applyNetwork(net);
-    if (connected) {
+    if (net.isSolana) {
+      // If we have a Solana account, load balances; otherwise user needs to connect
+      if (solanaAccount) {
+        loadBalancesAndPrices(solanaAccount, net);
+      }
+    } else if (account) {
       await switchToNetwork(net);
     }
   }
@@ -668,7 +804,13 @@ export default function SwapPage() {
   }
 
   async function handleSwap() {
-    if (!connected || !account) return;
+    if (!connected || !activeAccount) return;
+
+    if (isSolana) {
+      showToast("❌ Solana swaps coming soon! Currently view-only.", "err");
+      return;
+    }
+
     if (!isOnSelectedNetwork) { await switchToNetwork(selectedNetwork); return; }
 
     const amt = Number(fromAmount);
@@ -687,7 +829,7 @@ export default function SwapPage() {
       const amtRaw = BigInt(Math.round(amt * Math.pow(10, fromToken.decimals))).toString();
 
       showToast("🔍 Getting best route...", "info");
-      const priceUrl = `${PARASWAP_API}/prices?srcToken=${fromToken.address}&srcDecimals=${fromToken.decimals}&destToken=${toToken.address}&destDecimals=${toToken.decimals}&amount=${amtRaw}&side=SELL&network=${selectedNetwork.paraswapNetwork}&userAddress=${account}`;
+      const priceUrl = `${PARASWAP_API}/prices?srcToken=${fromToken.address}&srcDecimals=${fromToken.decimals}&destToken=${toToken.address}&destDecimals=${toToken.decimals}&amount=${amtRaw}&side=SELL&network=${selectedNetwork.paraswapNetwork}&userAddress=${activeAccount}`;
       const priceRes = await fetch(priceUrl);
       if (!priceRes.ok) throw new Error("Failed to get price route");
       const priceData = await priceRes.json() as { priceRoute: unknown };
@@ -703,7 +845,7 @@ export default function SwapPage() {
           srcAmount: amtRaw,
           slippage: Math.round(Number(slippage) * 100),
           priceRoute: priceData.priceRoute,
-          userAddress: account,
+          userAddress: activeAccount,
         }),
       });
       if (!buildRes.ok) {
@@ -716,7 +858,7 @@ export default function SwapPage() {
       if (!isNativeToken) {
         const allowanceHex = await window.ethereum!.request({
           method: "eth_call",
-          params: [{ to: fromToken.address, data: encodeAllowance(account, txData.to) }, "latest"],
+          params: [{ to: fromToken.address, data: encodeAllowance(activeAccount, txData.to) }, "latest"],
         }) as string;
 
         const allowance = BigInt(allowanceHex || "0x0");
@@ -731,7 +873,7 @@ export default function SwapPage() {
 
           await window.ethereum!.request({
             method: "eth_sendTransaction",
-            params: [{ from: account, to: fromToken.address, data: approveData }],
+            params: [{ from: activeAccount, to: fromToken.address, data: approveData }],
           });
           showToast("✅ Approved! Submitting swap...", "ok");
           await new Promise((r) => setTimeout(r, 2000));
@@ -741,7 +883,7 @@ export default function SwapPage() {
       const txHash = await window.ethereum!.request({
         method: "eth_sendTransaction",
         params: [{
-          from: account,
+          from: activeAccount,
           to: txData.to,
           data: txData.data,
           value: txData.value && txData.value !== "0" ? "0x" + BigInt(txData.value).toString(16) : "0x0",
@@ -752,7 +894,7 @@ export default function SwapPage() {
       showToast(`✅ Swap submitted! ${txHash.slice(0, 8)}...${txHash.slice(-6)}`, "ok");
       setFromAmount("");
       setToAmount("");
-      setTimeout(() => loadBalancesAndPrices(account, selectedNetwork), 8000);
+      setTimeout(() => loadBalancesAndPrices(activeAccount, selectedNetwork), 8000);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
       if (!msg.toLowerCase().includes("user rejected") && !msg.toLowerCase().includes("user denied")) {
@@ -762,6 +904,10 @@ export default function SwapPage() {
       setIsSwapping(false);
     }
   }
+
+  const displayAccount = activeAccount
+    ? `${activeAccount.slice(0, 6)}...${activeAccount.slice(-4)}`
+    : null;
 
   const usdValue = fromAmount && !isNaN(Number(fromAmount)) && fromToken.price > 0
     ? (Number(fromAmount) * fromToken.price).toFixed(2)
@@ -822,7 +968,7 @@ export default function SwapPage() {
             </svg>
           </button>
 
-          {connected && !isOnSelectedNetwork && (
+          {connected && !isSolana && !isOnSelectedNetwork && (
             <button
               onClick={() => switchToNetwork(selectedNetwork)}
               style={{
@@ -850,7 +996,7 @@ export default function SwapPage() {
             {connected ? (
               <>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
-                {`${account!.slice(0, 6)}...${account!.slice(-4)}`}
+                {displayAccount}
                 {balancesLoading && <span style={{ fontSize: 11, opacity: 0.7 }}>⟳</span>}
               </>
             ) : (
@@ -1089,7 +1235,7 @@ export default function SwapPage() {
             onClick={
               !connected
                 ? connectWallet
-                : connected && !isOnSelectedNetwork
+                : connected && !isSolana && !isOnSelectedNetwork
                 ? () => switchToNetwork(selectedNetwork)
                 : handleSwap
             }
@@ -1105,13 +1251,15 @@ export default function SwapPage() {
                 Processing swap...
               </span>
             ) : !connected ? (
-              "Connect Wallet to Swap"
-            ) : !isOnSelectedNetwork ? (
+              isSolana ? "Connect MetaMask (Solana Snap)" : "Connect Wallet to Swap"
+            ) : !isSolana && !isOnSelectedNetwork ? (
               `Switch to ${selectedNetwork.name}`
             ) : !fromAmount ? (
               "Enter an Amount"
             ) : quoteLoading ? (
               "Getting quote..."
+            ) : isSolana ? (
+              `Swap ${fromToken.symbol} → ${toToken.symbol} (Coming Soon)`
             ) : (
               `Swap ${fromToken.symbol} → ${toToken.symbol}`
             )}
