@@ -11,20 +11,6 @@ declare global {
       removeListener: (event: string, handler: (...args: unknown[]) => void) => void;
       isMetaMask?: boolean;
     };
-    phantom?: {
-      solana?: {
-        isPhantom?: boolean;
-        connect: (opts?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey: { toString(): string } }>;
-        disconnect: () => Promise<void>;
-        publicKey?: { toString(): string } | null;
-      };
-    };
-    solana?: {
-      isPhantom?: boolean;
-      connect: (opts?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey: { toString(): string } }>;
-      disconnect: () => Promise<void>;
-      publicKey?: { toString(): string } | null;
-    };
   }
 }
 
@@ -87,12 +73,6 @@ const NETWORKS: Network[] = [
     color: "#0052FF", icon: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/info/logo.png",
     nativeCurrency: "ETH", paraswapNetwork: 8453,
     rpcUrl: "https://mainnet.base.org", blockExplorer: "https://basescan.org",
-  },
-  {
-    id: "solana", chainId: 0, name: "Solana", shortName: "SOL",
-    color: "#9945FF", icon: `${CDN}/sol.png`,
-    nativeCurrency: "SOL", paraswapNetwork: null,
-    rpcUrl: "https://api.mainnet-beta.solana.com", blockExplorer: "https://solscan.io",
   },
 ];
 
@@ -170,13 +150,6 @@ const TOKENS_BY_CHAIN: Record<string, TokenDef[]> = {
     { symbol: "WBTC", name: "Wrapped Bitcoin", color: "#F7931A", decimals: 8, address: "0x1ceA84203673764244E05693e42E6Ace62bE9BA5", coingeckoId: "wrapped-bitcoin", icon: `${CDN}/wbtc.png` },
     { symbol: "LINK", name: "Chainlink", color: "#2A5ADA", decimals: 18, address: "0x88Fb150BDc53A65fe94Dea0c9BA0a6dAf8C6e196", coingeckoId: "chainlink", icon: `${CDN}/link.png` },
   ],
-  "solana": [
-    { symbol: "SOL", name: "Solana", color: "#9945FF", decimals: 9, address: NATIVE, coingeckoId: "solana", icon: `${CDN}/sol.png` },
-    { symbol: "USDC", name: "USD Coin", color: "#2775CA", decimals: 6, address: "DdfQ6ZtvxSAPDUyMvhR8R9JUTJj1ZSavCNrQN9jVZJEA", coingeckoId: "usd-coin", icon: "https://img.cryptorank.io/coins/usd%20coin1634317395959.png", fixedPrice: 1 },
-    { symbol: "USDT", name: "Tether", color: "#26A17B", decimals: 6, address: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", coingeckoId: "tether", icon: `${CDN}/usdt.png` },
-    { symbol: "RAY", name: "Raydium", color: "#5AC4BE", decimals: 6, address: "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R", coingeckoId: "raydium", icon: `${CDN}/ray.png` },
-    { symbol: "SRM", name: "Serum", color: "#65C2CB", decimals: 6, address: "SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt", coingeckoId: "serum", icon: `${CDN}/srm.png` },
-  ],
 };
 
 function makeToken(def: TokenDef, balance = 0, price = 0): Token {
@@ -200,38 +173,6 @@ async function fetchERC20Balance(tokenAddress: string, walletAddress: string): P
     params: [{ to: tokenAddress, data: encodeBalanceOf(walletAddress) }, "latest"],
   }) as string;
   return result;
-}
-
-// ─── Solana RPC helpers ───────────────────────────────────────────────────────
-const SOLANA_RPC = "https://rpc.ankr.com/solana";
-
-async function fetchSolBalance(pubkey: string): Promise<number> {
-  const res = await fetch(SOLANA_RPC, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getBalance", params: [pubkey] }),
-  });
-  const data = await res.json() as { result?: { value?: number } };
-  return (data.result?.value ?? 0) / 1e9;
-}
-
-async function fetchSplTokenBalance(pubkey: string, mintAddress: string, decimals: number): Promise<number> {
-  const res = await fetch(SOLANA_RPC, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0", id: 1,
-      method: "getTokenAccountsByOwner",
-      params: [pubkey, { mint: mintAddress }, { encoding: "jsonParsed" }],
-    }),
-  });
-  const data = await res.json() as {
-    result?: { value?: Array<{ account: { data: { parsed: { info: { tokenAmount: { uiAmount: number } } } } } }> }
-  };
-  const accounts = data.result?.value ?? [];
-  if (accounts.length === 0) return 0;
-  return accounts[0].account.data.parsed.info.tokenAmount.uiAmount ?? 0;
-  void decimals;
 }
 
 async function fetchCoinGeckoPrices(ids: string[]): Promise<Record<string, number>> {
@@ -521,16 +462,12 @@ export default function SwapPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [toastType, setToastType] = useState<"ok" | "err" | "info">("ok");
   const [account, setAccount] = useState<string | null>(null);
-  // solanaAccount holds the MetaMask Solana Snap public key when on Solana network
-  const [solanaAccount, setSolanaAccount] = useState<string | null>(null);
   const [chainId, setChainId] = useState<string | null>(null);
   const [exchangeRate, setExchangeRate] = useState<string | null>(null);
   const quoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isSolana = selectedNetwork.id === "solana";
-  const connected = isSolana ? !!solanaAccount : !!account;
-  // Solana is non-EVM — treat it as always "on network" (user switches manually in MetaMask)
-  const isOnSelectedNetwork = selectedNetwork.chainId === 0 || chainId?.toLowerCase() === selectedNetwork.id.toLowerCase();
+  const connected = !!account;
+  const isOnSelectedNetwork = chainId?.toLowerCase() === selectedNetwork.id.toLowerCase();
 
   function showToast(msg: string, type: "ok" | "err" | "info" = "ok") {
     setToast(msg);
@@ -555,41 +492,25 @@ export default function SwapPage() {
   }, []);
 
   const loadBalancesAndPrices = useCallback(async (addr: string, net: Network) => {
-    if (net.chainId !== 0 && !window.ethereum) return;
+    if (!window.ethereum) return;
     setBalancesLoading(true);
     const defs = TOKENS_BY_CHAIN[net.id] ?? [];
     try {
       const priceMap = await fetchCoinGeckoPrices(defs.map((t) => t.coingeckoId));
 
-      let balances: number[];
-      if (net.id === "solana") {
-        // Fetch Solana balances via JSON-RPC
-        balances = await Promise.all(
-          defs.map(async (token) => {
-            try {
-              if (token.address === NATIVE) {
-                return await fetchSolBalance(addr);
-              } else {
-                return await fetchSplTokenBalance(addr, token.address, token.decimals);
-              }
-            } catch { return 0; }
-          })
-        );
-      } else {
-        balances = await Promise.all(
-          defs.map(async (token) => {
-            try {
-              if (token.address.toLowerCase() === NATIVE.toLowerCase()) {
-                const bal = await window.ethereum!.request({ method: "eth_getBalance", params: [addr, "latest"] }) as string;
-                return parseInt(bal, 16) / 1e18;
-              } else {
-                const raw = await fetchERC20Balance(token.address, addr);
-                return parseInt(raw, 16) / Math.pow(10, token.decimals);
-              }
-            } catch { return 0; }
-          })
-        );
-      }
+      const balances = await Promise.all(
+        defs.map(async (token) => {
+          try {
+            if (token.address.toLowerCase() === NATIVE.toLowerCase()) {
+              const bal = await window.ethereum!.request({ method: "eth_getBalance", params: [addr, "latest"] }) as string;
+              return parseInt(bal, 16) / 1e18;
+            } else {
+              const raw = await fetchERC20Balance(token.address, addr);
+              return parseInt(raw, 16) / Math.pow(10, token.decimals);
+            }
+          } catch { return 0; }
+        })
+      );
 
       const updated = defs.map((t, i) => makeToken(t, balances[i], t.fixedPrice ?? priceMap[t.coingeckoId] ?? 0));
       setTokens(updated);
@@ -682,81 +603,26 @@ export default function SwapPage() {
     };
   }, [applyNetwork]);
 
-  // Phantom wallet — try to restore session on mount (silent, onlyIfTrusted)
   useEffect(() => {
-    if (!isSolana) return;
-    const phantom = window.phantom?.solana ?? window.solana;
-    if (!phantom?.isPhantom) return;
-    phantom.connect({ onlyIfTrusted: true })
-      .then((resp) => {
-        const pubkey = resp.publicKey.toString();
-        if (pubkey) setSolanaAccount(pubkey);
-      })
-      .catch(() => { /* not previously trusted — user must click Connect */ });
-  }, [isSolana]);
-
-  useEffect(() => {
-    if (isSolana) {
-      if (solanaAccount) loadBalancesAndPrices(solanaAccount, selectedNetwork);
-    } else {
-      if (account && isOnSelectedNetwork) loadBalancesAndPrices(account, selectedNetwork);
-    }
-  }, [account, solanaAccount, isSolana, isOnSelectedNetwork, selectedNetwork, loadBalancesAndPrices]);
+    if (account && isOnSelectedNetwork) loadBalancesAndPrices(account, selectedNetwork);
+  }, [account, isOnSelectedNetwork, selectedNetwork, loadBalancesAndPrices]);
 
   async function connectWallet() {
     if (!window.ethereum) {
       alert("MetaMask not found. Please install MetaMask browser extension from metamask.io");
       return;
     }
-    if (isSolana) {
-      // Connect via Phantom wallet for Solana network
-      const phantom = window.phantom?.solana ?? window.solana;
-      if (!phantom?.isPhantom) {
-        window.open("https://phantom.app/", "_blank");
-        showToast("Please install Phantom wallet to use Solana", "err");
-        return;
-      }
-      try {
-        const resp = await phantom.connect();
-        const pubkey = resp.publicKey.toString();
-        if (pubkey) {
-          setSolanaAccount(pubkey);
-        } else {
-          showToast("❌ Could not get Solana account from Phantom", "err");
-        }
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "";
-        if (!msg.toLowerCase().includes("user rejected") && !msg.toLowerCase().includes("user denied")) {
-          showToast("❌ Phantom wallet error: " + msg.slice(0, 60), "err");
-        }
-      }
-    } else {
-      // Connect MetaMask for EVM chains
-      try {
-        const accs = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
-        if (accs[0]) setAccount(accs[0]);
-      } catch { /* user rejected */ }
-    }
+    try {
+      const accs = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
+      if (accs[0]) setAccount(accs[0]);
+    } catch { /* user rejected */ }
   }
 
-  async function disconnectWallet() {
-    if (isSolana) {
-      const phantom = window.phantom?.solana ?? window.solana;
-      if (phantom?.isPhantom) {
-        try { await phantom.disconnect(); } catch { /* ignore */ }
-      }
-      setSolanaAccount(null);
-    } else {
-      setAccount(null);
-    }
+  function disconnectWallet() {
+    setAccount(null);
   }
 
   async function switchToNetwork(net: Network) {
-    if (net.chainId === 0) {
-      // Solana uses Phantom wallet — no chain switch needed
-      showToast(`ℹ️ Solana uses Phantom wallet — click Connect Wallet to link your Solana account`, "info");
-      return;
-    }
     try {
       await window.ethereum?.request({
         method: "wallet_switchEthereumChain",
@@ -984,9 +850,7 @@ export default function SwapPage() {
             {connected ? (
               <>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
-                {isSolana
-                  ? `${solanaAccount!.slice(0, 4)}...${solanaAccount!.slice(-4)}`
-                  : `${account!.slice(0, 6)}...${account!.slice(-4)}`}
+                {`${account!.slice(0, 6)}...${account!.slice(-4)}`}
                 {balancesLoading && <span style={{ fontSize: 11, opacity: 0.7 }}>⟳</span>}
               </>
             ) : (
