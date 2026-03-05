@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 
 declare global {
   interface Window {
@@ -12,24 +13,45 @@ declare global {
   }
 }
 
+const CDN = "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color";
+
 const INITIAL_TOKENS = [
-  { symbol: "ETH", name: "Ethereum", color: "#627EEA", balance: 2.4521, price: 3420.5 },
-  { symbol: "USDC", name: "USD Coin", color: "#2775CA", balance: 1250.0, price: 1.0 },
-  { symbol: "BTC", name: "Bitcoin", color: "#F7931A", balance: 0.0821, price: 68200.0 },
-  { symbol: "SOL", name: "Solana", color: "#9945FF", balance: 45.23, price: 185.3 },
-  { symbol: "UNI", name: "Uniswap", color: "#FF007A", balance: 120.5, price: 12.4 },
-  { symbol: "LINK", name: "Chainlink", color: "#2A5ADA", balance: 85.0, price: 18.7 },
-  { symbol: "AAVE", name: "Aave", color: "#B6509E", balance: 5.2, price: 210.0 },
-  { symbol: "MATIC", name: "Polygon", color: "#8247E5", balance: 500.0, price: 0.85 },
+  { symbol: "ETH", name: "Ethereum", color: "#627EEA", balance: 2.4521, price: 3420.5, icon: `${CDN}/eth.png` },
+  { symbol: "USDC", name: "USD Coin", color: "#2775CA", balance: 1250.0, price: 1.0, icon: `${CDN}/usdc.png` },
+  { symbol: "BTC", name: "Bitcoin", color: "#F7931A", balance: 0.0821, price: 68200.0, icon: `${CDN}/btc.png` },
+  { symbol: "BNB", name: "BNB", color: "#F3BA2F", balance: 12.5, price: 420.0, icon: `${CDN}/bnb.png` },
+  { symbol: "SOL", name: "Solana", color: "#9945FF", balance: 45.0, price: 150.0, icon: `${CDN}/sol.png` },
+  { symbol: "ADA", name: "Cardano", color: "#0033AD", balance: 5000.0, price: 0.45, icon: `${CDN}/ada.png` },
+  { symbol: "AVAX", name: "Avalanche", color: "#E84142", balance: 80.0, price: 35.0, icon: `${CDN}/avax.png` },
+  { symbol: "MATIC", name: "Polygon", color: "#8247E5", balance: 2000.0, price: 0.85, icon: `${CDN}/matic.png` },
+  { symbol: "DOT", name: "Polkadot", color: "#E6007A", balance: 300.0, price: 7.5, icon: `${CDN}/dot.png` },
+  { symbol: "LINK", name: "Chainlink", color: "#2A5ADA", balance: 150.0, price: 15.0, icon: `${CDN}/link.png` },
+  { symbol: "UNI", name: "Uniswap", color: "#FF007A", balance: 200.0, price: 8.0, icon: `${CDN}/uni.png` },
+  { symbol: "USDT", name: "Tether", color: "#26A17B", balance: 3000.0, price: 1.0, icon: `${CDN}/usdt.png` },
 ];
 
 type TokenData = (typeof INITIAL_TOKENS)[number];
 type Token = TokenData & { balance: number };
 
-function TokenAvatar({ symbol, color, size = "md" }: { symbol: string; color?: string; size?: "sm" | "md" | "lg" }) {
+function TokenAvatar({ symbol, color, icon, size = "md" }: { symbol: string; color?: string; icon?: string; size?: "sm" | "md" | "lg" }) {
   const token = INITIAL_TOKENS.find((t) => t.symbol === symbol);
+  const iconUrl = icon ?? token?.icon;
   const dim = size === "sm" ? 28 : size === "lg" ? 44 : 36;
   const fs = size === "sm" ? 11 : size === "lg" ? 15 : 13;
+
+  if (iconUrl) {
+    return (
+      <Image
+        src={iconUrl}
+        alt={symbol}
+        width={dim}
+        height={dim}
+        unoptimized
+        style={{ borderRadius: "50%", flexShrink: 0 }}
+      />
+    );
+  }
+
   return (
     <div
       style={{
