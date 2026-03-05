@@ -11,6 +11,20 @@ declare global {
       removeListener: (event: string, handler: (...args: unknown[]) => void) => void;
       isMetaMask?: boolean;
     };
+    phantom?: {
+      solana?: {
+        isPhantom?: boolean;
+        connect: (opts?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey: { toString(): string } }>;
+        disconnect: () => Promise<void>;
+        publicKey?: { toString(): string } | null;
+      };
+    };
+    solana?: {
+      isPhantom?: boolean;
+      connect: (opts?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey: { toString(): string } }>;
+      disconnect: () => Promise<void>;
+      publicKey?: { toString(): string } | null;
+    };
   }
 }
 
@@ -668,20 +682,17 @@ export default function SwapPage() {
     };
   }, [applyNetwork]);
 
-  // MetaMask Solana Snap — try to restore session on mount
+  // Phantom wallet — try to restore session on mount (silent, onlyIfTrusted)
   useEffect(() => {
-    if (!isSolana || !window.ethereum) return;
-    // Silently check if the Solana snap is already installed and has an account
-    window.ethereum.request({
-      method: "wallet_invokeSnap",
-      params: {
-        snapId: "npm:@solflare-wallet/solana-snap",
-        request: { method: "getPublicKey", params: { derivationPath: ["0'", "0'"], confirm: false } },
-      } as unknown as Record<string, unknown>,
-    }).then((result) => {
-      const pubkey = result as string | null;
-      if (pubkey) setSolanaAccount(pubkey);
-    }).catch(() => { /* snap not installed or no account yet */ });
+    if (!isSolana) return;
+    const phantom = window.phantom?.solana ?? window.solana;
+    if (!phantom?.isPhantom) return;
+    phantom.connect({ onlyIfTrusted: true })
+      .then((resp) => {
+        const pubkey = resp.publicKey.toString();
+        if (pubkey) setSolanaAccount(pubkey);
+      })
+      .catch(() => { /* not previously trusted — user must click Connect */ });
   }, [isSolana]);
 
   useEffect(() => {
@@ -698,31 +709,25 @@ export default function SwapPage() {
       return;
     }
     if (isSolana) {
-      // Connect MetaMask via Solana Snap for Solana network
+      // Connect via Phantom wallet for Solana network
+      const phantom = window.phantom?.solana ?? window.solana;
+      if (!phantom?.isPhantom) {
+        window.open("https://phantom.app/", "_blank");
+        showToast("Please install Phantom wallet to use Solana", "err");
+        return;
+      }
       try {
-        // Step 1: Install / enable the Solflare Solana Snap
-        await window.ethereum.request({
-          method: "wallet_requestSnaps",
-          params: { "npm:@solflare-wallet/solana-snap": {} } as unknown as Record<string, unknown>,
-        });
-        // Step 2: Get the Solana public key from the snap
-        const result = await window.ethereum.request({
-          method: "wallet_invokeSnap",
-          params: {
-            snapId: "npm:@solflare-wallet/solana-snap",
-            request: { method: "getPublicKey", params: { derivationPath: ["0'", "0'"], confirm: true } },
-          } as unknown as Record<string, unknown>,
-        });
-        const pubkey = result as string | null;
+        const resp = await phantom.connect();
+        const pubkey = resp.publicKey.toString();
         if (pubkey) {
           setSolanaAccount(pubkey);
         } else {
-          showToast("❌ Could not get Solana account from MetaMask", "err");
+          showToast("❌ Could not get Solana account from Phantom", "err");
         }
       } catch (e) {
         const msg = e instanceof Error ? e.message : "";
         if (!msg.toLowerCase().includes("user rejected") && !msg.toLowerCase().includes("user denied")) {
-          showToast("❌ MetaMask Solana Snap error: " + msg.slice(0, 60), "err");
+          showToast("❌ Phantom wallet error: " + msg.slice(0, 60), "err");
         }
       }
     } else {
@@ -736,6 +741,10 @@ export default function SwapPage() {
 
   async function disconnectWallet() {
     if (isSolana) {
+      const phantom = window.phantom?.solana ?? window.solana;
+      if (phantom?.isPhantom) {
+        try { await phantom.disconnect(); } catch { /* ignore */ }
+      }
       setSolanaAccount(null);
     } else {
       setAccount(null);
@@ -744,8 +753,8 @@ export default function SwapPage() {
 
   async function switchToNetwork(net: Network) {
     if (net.chainId === 0) {
-      // Solana is handled via MetaMask Solana Snap — no chain switch needed
-      showToast(`ℹ️ Solana uses MetaMask Snap — click Connect Wallet to link your Solana account`, "info");
+      // Solana uses Phantom wallet — no chain switch needed
+      showToast(`ℹ️ Solana uses Phantom wallet — click Connect Wallet to link your Solana account`, "info");
       return;
     }
     try {
