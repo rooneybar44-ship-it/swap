@@ -12,21 +12,22 @@ declare global {
   }
 }
 
-const TOKENS = [
-  { symbol: "ETH", name: "Ethereum", color: "#627EEA", balance: "2.4521", price: 3420.5 },
-  { symbol: "USDC", name: "USD Coin", color: "#2775CA", balance: "1,250.00", price: 1.0 },
-  { symbol: "BTC", name: "Bitcoin", color: "#F7931A", balance: "0.0821", price: 68200.0 },
-  { symbol: "SOL", name: "Solana", color: "#9945FF", balance: "45.230", price: 185.3 },
-  { symbol: "UNI", name: "Uniswap", color: "#FF007A", balance: "120.50", price: 12.4 },
-  { symbol: "LINK", name: "Chainlink", color: "#2A5ADA", balance: "85.00", price: 18.7 },
-  { symbol: "AAVE", name: "Aave", color: "#B6509E", balance: "5.20", price: 210.0 },
-  { symbol: "MATIC", name: "Polygon", color: "#8247E5", balance: "500.00", price: 0.85 },
+const INITIAL_TOKENS = [
+  { symbol: "ETH", name: "Ethereum", color: "#627EEA", balance: 2.4521, price: 3420.5 },
+  { symbol: "USDC", name: "USD Coin", color: "#2775CA", balance: 1250.0, price: 1.0 },
+  { symbol: "BTC", name: "Bitcoin", color: "#F7931A", balance: 0.0821, price: 68200.0 },
+  { symbol: "SOL", name: "Solana", color: "#9945FF", balance: 45.23, price: 185.3 },
+  { symbol: "UNI", name: "Uniswap", color: "#FF007A", balance: 120.5, price: 12.4 },
+  { symbol: "LINK", name: "Chainlink", color: "#2A5ADA", balance: 85.0, price: 18.7 },
+  { symbol: "AAVE", name: "Aave", color: "#B6509E", balance: 5.2, price: 210.0 },
+  { symbol: "MATIC", name: "Polygon", color: "#8247E5", balance: 500.0, price: 0.85 },
 ];
 
-type Token = (typeof TOKENS)[number];
+type TokenData = (typeof INITIAL_TOKENS)[number];
+type Token = TokenData & { balance: number };
 
-function TokenAvatar({ symbol, size = "md" }: { symbol: string; size?: "sm" | "md" | "lg" }) {
-  const token = TOKENS.find((t) => t.symbol === symbol);
+function TokenAvatar({ symbol, color, size = "md" }: { symbol: string; color?: string; size?: "sm" | "md" | "lg" }) {
+  const token = INITIAL_TOKENS.find((t) => t.symbol === symbol);
   const dim = size === "sm" ? 28 : size === "lg" ? 44 : 36;
   const fs = size === "sm" ? 11 : size === "lg" ? 15 : 13;
   return (
@@ -35,7 +36,7 @@ function TokenAvatar({ symbol, size = "md" }: { symbol: string; size?: "sm" | "m
         width: dim,
         height: dim,
         borderRadius: "50%",
-        background: token?.color || "#4f6ef7",
+        background: color || token?.color || "#4f6ef7",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -55,13 +56,15 @@ function TokenSelectModal({
   onSelect,
   onClose,
   excludeSymbol,
+  tokens,
 }: {
   onSelect: (token: Token) => void;
   onClose: () => void;
   excludeSymbol?: string;
+  tokens: Token[];
 }) {
   const [search, setSearch] = useState("");
-  const filtered = TOKENS.filter(
+  const filtered = tokens.filter(
     (t) =>
       t.symbol !== excludeSymbol &&
       (t.symbol.toLowerCase().includes(search.toLowerCase()) ||
@@ -131,7 +134,7 @@ function TokenSelectModal({
                 <div style={{ color: "#6b7299", fontSize: 12 }}>{token.name}</div>
               </div>
               <div style={{ textAlign: "right" }}>
-                <div style={{ color: "#c0c8f0", fontSize: 13, fontWeight: 500 }}>{token.balance}</div>
+                <div style={{ color: "#c0c8f0", fontSize: 13, fontWeight: 500 }}>{token.balance.toFixed(4)}</div>
                 <div style={{ color: "#6b7299", fontSize: 11 }}>${token.price.toLocaleString()}</div>
               </div>
             </button>
@@ -143,12 +146,14 @@ function TokenSelectModal({
 }
 
 export default function SafeSwapPage() {
-  const [fromToken, setFromToken] = useState<Token>(TOKENS[0]);
-  const [toToken, setToToken] = useState<Token>(TOKENS[1]);
+  const [tokens, setTokens] = useState<Token[]>(INITIAL_TOKENS);
+  const [fromToken, setFromToken] = useState<Token>(INITIAL_TOKENS[0]);
+  const [toToken, setToToken] = useState<Token>(INITIAL_TOKENS[1]);
   const [fromAmount, setFromAmount] = useState("");
   const [slippage, setSlippage] = useState("0.5");
   const [modalFor, setModalFor] = useState<"from" | "to" | null>(null);
   const [isSwapping, setIsSwapping] = useState(false);
+  const [swapSuccess, setSwapSuccess] = useState<string | null>(null);
   const [account, setAccount] = useState<string | null>(null);
   const connected = !!account;
 
@@ -210,28 +215,43 @@ export default function SafeSwapPage() {
 
   async function handleSwap() {
     if (!connected || !fromAmount) return;
+    const amt = Number(fromAmount);
+    if (isNaN(amt) || amt <= 0) return;
+    if (amt > fromToken.balance) {
+      setSwapSuccess(`❌ Insufficient ${fromToken.symbol} balance`);
+      setTimeout(() => setSwapSuccess(null), 3000);
+      return;
+    }
     setIsSwapping(true);
-    await new Promise((r) => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, 1800));
+    const received = Number(toAmount);
+    // Update balances
+    setTokens((prev) =>
+      prev.map((t) => {
+        if (t.symbol === fromToken.symbol) return { ...t, balance: t.balance - amt };
+        if (t.symbol === toToken.symbol) return { ...t, balance: t.balance + received };
+        return t;
+      })
+    );
+    setFromToken((t) => ({ ...t, balance: t.balance - amt }));
+    setToToken((t) => ({ ...t, balance: t.balance + received }));
     setIsSwapping(false);
     setFromAmount("");
+    setSwapSuccess(`✅ Swapped ${amt} ${fromToken.symbol} → ${received.toFixed(6)} ${toToken.symbol}`);
+    setTimeout(() => setSwapSuccess(null), 4000);
   }
 
   return (
     <div style={{ minHeight: "100vh", background: "#0d0e1a" }}>
-      {/* Subtle background blobs */}
-      <div style={{
-        position: "fixed", inset: 0, pointerEvents: "none", overflow: "hidden", zIndex: 0,
-      }}>
-        <div style={{
-          position: "absolute", top: "-80px", right: "-80px",
-          width: 400, height: 400, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(108,99,255,0.18) 0%, transparent 70%)",
-        }} />
-        <div style={{
-          position: "absolute", bottom: "-60px", left: "-60px",
-          width: 350, height: 350, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(108,99,255,0.1) 0%, transparent 70%)",
-        }} />
+      {/* Background blobs */}
+      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", overflow: "hidden", zIndex: 0 }}>
+        <div style={{ position: "absolute", top: "-100px", right: "-100px", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(108,99,255,0.22) 0%, transparent 65%)" }} />
+        <div style={{ position: "absolute", bottom: "-80px", left: "-80px", width: 420, height: 420, borderRadius: "50%", background: "radial-gradient(circle, rgba(79,110,247,0.15) 0%, transparent 65%)" }} />
+        <div style={{ position: "absolute", top: "40%", left: "15%", width: 280, height: 280, borderRadius: "50%", background: "radial-gradient(circle, rgba(153,69,255,0.1) 0%, transparent 65%)" }} />
+        <div style={{ position: "absolute", top: "20%", right: "20%", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(34,197,94,0.07) 0%, transparent 65%)" }} />
+        <div style={{ position: "absolute", bottom: "25%", right: "10%", width: 240, height: 240, borderRadius: "50%", background: "radial-gradient(circle, rgba(247,147,26,0.07) 0%, transparent 65%)" }} />
+        {/* Grid overlay */}
+        <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(108,99,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(108,99,255,0.04) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
       </div>
 
       {/* Header */}
@@ -261,20 +281,17 @@ export default function SafeSwapPage() {
 
         {/* Nav */}
         <nav style={{ display: "flex", gap: 4 }} className="hidden md:flex">
-          {["Swap", "Liquidity", "Earn", "Analytics"].map((item, i) => (
-            <button
-              key={item}
-              style={{
-                padding: "8px 16px", borderRadius: 10, fontSize: 14, fontWeight: 500,
-                border: "none", cursor: "pointer",
-                background: i === 0 ? "rgba(108,99,255,0.2)" : "transparent",
-                color: i === 0 ? "#9b8fff" : "#7b82b0",
-                transition: "all 0.15s",
-              }}
-            >
-              {item}
-            </button>
-          ))}
+          <button
+            style={{
+              padding: "8px 16px", borderRadius: 10, fontSize: 14, fontWeight: 500,
+              border: "none", cursor: "pointer",
+              background: "rgba(108,99,255,0.2)",
+              color: "#9b8fff",
+              transition: "all 0.15s",
+            }}
+          >
+            Swap
+          </button>
         </nav>
 
         {/* Connect */}
@@ -380,7 +397,7 @@ export default function SafeSwapPage() {
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
               <span style={{ fontSize: 12, color: "#6b7299", fontWeight: 500 }}>You Pay</span>
               <span style={{ fontSize: 12, color: "#6b7299" }}>
-                Balance: <span style={{ color: "#a0a8d0", fontWeight: 600 }}>{fromToken.balance} {fromToken.symbol}</span>
+                Balance: <span style={{ color: "#a0a8d0", fontWeight: 600 }}>{fromToken.balance.toFixed(4)} {fromToken.symbol}</span>
               </span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -422,7 +439,7 @@ export default function SafeSwapPage() {
                     border: "1px solid #252847",
                   }}
                   onClick={() => {
-                    const bal = parseFloat(fromToken.balance.replace(",", ""));
+                    const bal = fromToken.balance;
                     const multiplier = pct === "MAX" ? 1 : parseFloat(pct) / 100;
                     setFromAmount((bal * multiplier).toFixed(4));
                   }}
@@ -451,7 +468,7 @@ export default function SafeSwapPage() {
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
               <span style={{ fontSize: 12, color: "#6b7299", fontWeight: 500 }}>You Receive</span>
               <span style={{ fontSize: 12, color: "#6b7299" }}>
-                Balance: <span style={{ color: "#a0a8d0", fontWeight: 600 }}>{toToken.balance} {toToken.symbol}</span>
+                Balance: <span style={{ color: "#a0a8d0", fontWeight: 600 }}>{toToken.balance.toFixed(4)} {toToken.symbol}</span>
               </span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -543,9 +560,23 @@ export default function SafeSwapPage() {
         </div>
       </main>
 
+      {/* Success toast */}
+      {swapSuccess && (
+        <div style={{
+          position: "fixed", bottom: 32, left: "50%", transform: "translateX(-50%)",
+          background: "#13152a", border: "1.5px solid #252847", borderRadius: 14,
+          padding: "14px 24px", color: "#e8eaff", fontSize: 14, fontWeight: 600,
+          boxShadow: "0 8px 32px rgba(0,0,0,0.4)", zIndex: 100,
+          animation: "fadein 0.3s ease",
+        }}>
+          {swapSuccess}
+        </div>
+      )}
+
       {/* Token modal */}
       {modalFor && (
         <TokenSelectModal
+          tokens={tokens}
           excludeSymbol={modalFor === "from" ? toToken.symbol : fromToken.symbol}
           onSelect={(token) => {
             if (modalFor === "from") setFromToken(token);
