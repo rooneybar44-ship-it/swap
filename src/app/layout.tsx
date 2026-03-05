@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "SwapX — Instant Token Swap",
-  description: "Swap any token at the best rates across all major DEXs",
+  title: "SafeSwap — Secure Token Exchange",
+  description: "Swap tokens safely and securely at the best rates. Audited, trusted, and transparent.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
