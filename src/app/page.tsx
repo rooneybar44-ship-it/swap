@@ -89,6 +89,7 @@ type TokenDef = {
   address: string;
   coingeckoId: string;
   icon: string;
+  fixedPrice?: number;
 };
 
 type Token = TokenDef & { balance: number; price: number };
@@ -156,7 +157,7 @@ const TOKENS_BY_CHAIN: Record<string, TokenDef[]> = {
   ],
   "solana": [
     { symbol: "SOL", name: "Solana", color: "#9945FF", decimals: 9, address: NATIVE, coingeckoId: "solana", icon: `${CDN}/sol.png` },
-    { symbol: "USDC", name: "USD Coin", color: "#2775CA", decimals: 6, address: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", coingeckoId: "usd-coin", icon: `${CDN}/usdc.png` },
+    { symbol: "USDC", name: "USD Coin", color: "#2775CA", decimals: 6, address: "DdfQ6ZtvxSAPDUyMvhR8R9JUTJj1ZSavCNrQN9jVZJEA", coingeckoId: "usd-coin", icon: "https://img.cryptorank.io/coins/usd%20coin1634317395959.png", fixedPrice: 1 },
     { symbol: "USDT", name: "Tether", color: "#26A17B", decimals: 6, address: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", coingeckoId: "tether", icon: `${CDN}/usdt.png` },
     { symbol: "RAY", name: "Raydium", color: "#5AC4BE", decimals: 6, address: "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R", coingeckoId: "raydium", icon: `${CDN}/ray.png` },
     { symbol: "SRM", name: "Serum", color: "#65C2CB", decimals: 6, address: "SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt", coingeckoId: "serum", icon: `${CDN}/srm.png` },
@@ -164,7 +165,7 @@ const TOKENS_BY_CHAIN: Record<string, TokenDef[]> = {
 };
 
 function makeToken(def: TokenDef, balance = 0, price = 0): Token {
-  return { ...def, balance, price };
+  return { ...def, balance, price: def.fixedPrice ?? price };
 }
 
 function encodeBalanceOf(walletAddress: string): string {
@@ -527,7 +528,7 @@ export default function SwapPage() {
             })
           );
 
-      const updated = defs.map((t, i) => makeToken(t, balances[i], priceMap[t.coingeckoId] ?? 0));
+      const updated = defs.map((t, i) => makeToken(t, balances[i], t.fixedPrice ?? priceMap[t.coingeckoId] ?? 0));
       setTokens(updated);
       setFromToken((prev) => syncToken(prev.symbol, updated) ?? updated[0]);
       setToToken((prev) => syncToken(prev.symbol, updated) ?? updated[1]);
