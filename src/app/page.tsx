@@ -73,6 +73,12 @@ const NETWORKS: Network[] = [
     nativeCurrency: "ETH", paraswapNetwork: 8453,
     rpcUrl: "https://mainnet.base.org", blockExplorer: "https://basescan.org",
   },
+  {
+    id: "solana", chainId: 0, name: "Solana", shortName: "SOL",
+    color: "#9945FF", icon: `${CDN}/sol.png`,
+    nativeCurrency: "SOL", paraswapNetwork: null,
+    rpcUrl: "https://api.mainnet-beta.solana.com", blockExplorer: "https://solscan.io",
+  },
 ];
 
 type TokenDef = {
@@ -147,6 +153,13 @@ const TOKENS_BY_CHAIN: Record<string, TokenDef[]> = {
     { symbol: "USDT", name: "Tether", color: "#26A17B", decimals: 6, address: "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2", coingeckoId: "tether", icon: `${CDN}/usdt.png` },
     { symbol: "WBTC", name: "Wrapped Bitcoin", color: "#F7931A", decimals: 8, address: "0x1ceA84203673764244E05693e42E6Ace62bE9BA5", coingeckoId: "wrapped-bitcoin", icon: `${CDN}/wbtc.png` },
     { symbol: "LINK", name: "Chainlink", color: "#2A5ADA", decimals: 18, address: "0x88Fb150BDc53A65fe94Dea0c9BA0a6dAf8C6e196", coingeckoId: "chainlink", icon: `${CDN}/link.png` },
+  ],
+  "solana": [
+    { symbol: "SOL", name: "Solana", color: "#9945FF", decimals: 9, address: NATIVE, coingeckoId: "solana", icon: `${CDN}/sol.png` },
+    { symbol: "USDC", name: "USD Coin", color: "#2775CA", decimals: 6, address: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", coingeckoId: "usd-coin", icon: `${CDN}/usdc.png` },
+    { symbol: "USDT", name: "Tether", color: "#26A17B", decimals: 6, address: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", coingeckoId: "tether", icon: `${CDN}/usdt.png` },
+    { symbol: "RAY", name: "Raydium", color: "#5AC4BE", decimals: 6, address: "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R", coingeckoId: "raydium", icon: `${CDN}/ray.png` },
+    { symbol: "SRM", name: "Serum", color: "#65C2CB", decimals: 6, address: "SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt", coingeckoId: "serum", icon: `${CDN}/srm.png` },
   ],
 };
 
@@ -530,6 +543,10 @@ export default function SwapPage() {
   }
 
   async function switchToNetwork(net: Network) {
+    if (net.chainId === 0) {
+      showToast(`ℹ️ ${net.name} is not an EVM chain — MetaMask not required`, "ok");
+      return;
+    }
     try {
       await window.ethereum?.request({
         method: "wallet_switchEthereumChain",
