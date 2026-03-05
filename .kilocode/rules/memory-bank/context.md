@@ -10,10 +10,11 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
 
 - [x] Token swap UI — dark theme DEX interface with SwapX branding, animated swap card, token selector modal, slippage settings, stats bar, connect wallet button
 - [x] Coin logos via CryptoIcons CDN (next/image unoptimized), expanded token list to 12 tokens (ETH, USDC, BTC, BNB, SOL, ADA, AVAX, MATIC, DOT, LINK, UNI, USDT)
-- [x] Replaced Phantom wallet with MetaMask-only approach — Solana network now uses MetaMask Solana Snap (`npm:@metamask/solana-snap`) via `wallet_requestSnaps` + `wallet_invokeSnap`. EVM chains use standard `eth_requestAccounts`. Removed all `window.solana` references.
-- [x] Fixed MetaMask Snap params format — `wallet_requestSnaps` and `wallet_invokeSnap` require **object** params (not array). Changed `params: [{...}]` → `params: {...}` for both calls. Also updated `window.ethereum.request` TypeScript type to accept `Record<string, unknown>` in addition to `unknown[]`.
-- [x] Fixed wrong Solana Snap — `npm:@metamask/solana-snap` does not exist (404). Replaced with `npm:@solflare-wallet/solana-snap` (Solflare's official MetaMask Snap). Updated method from `solana_getAccount` → `getPublicKey` with `{ derivationPath: ["0'", "0'"], confirm: true/false }`. Result is a Base58 string directly (not an object).
-- [x] Replaced MetaMask Snap approach entirely with **Phantom wallet** (`window.phantom?.solana` / `window.solana`). Snap approach was unreliable. Now uses standard Phantom `connect()` / `disconnect()` API. Session restore uses `{ onlyIfTrusted: true }`. If Phantom not installed, opens phantom.app.
+- [x] Re-added Solana network support via MetaMask Snap (`npm:@solflare-wallet/solana-snap`). Uses `wallet_requestSnaps` to install snap, then `wallet_invokeSnap` with `getPublicKey` method and derivation path `["44'", "501'", "0'", "0'"]`. All wallet interactions go through MetaMask only — no Phantom or other wallets.
+- [x] Solana balance fetching via Solana JSON-RPC (`api.mainnet-beta.solana.com`): `getBalance` for SOL, `getTokenAccountsByOwner` for SPL tokens (USDC, USDT, RAY, BONK, JUP).
+- [x] Separate `solanaAccount` state from EVM `account` state. `activeAccount` computed based on `isSolana` flag. `isOnSelectedNetwork` handles both EVM chain matching and Solana connection status.
+- [x] Solana swaps marked as "coming soon" (view-only) — balances and prices display correctly, but swap execution is not yet implemented for Solana.
+- [x] 8 networks total: Ethereum, Polygon, BNB Chain, Arbitrum, Optimism, Avalanche, Base, Solana.
 
 - [x] Base Next.js 16 setup with App Router
 - [x] TypeScript configuration with strict mode
