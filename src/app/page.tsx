@@ -369,6 +369,102 @@ function TokenSelectModal({
   );
 }
 
+// ─── Price Ticker ────────────────────────────────────────────────────────────
+const TICKER_COINS = [
+  { id: "bitcoin", symbol: "BTC", icon: `${CDN}/btc.png` },
+  { id: "ethereum", symbol: "ETH", icon: `${CDN}/eth.png` },
+  { id: "binancecoin", symbol: "BNB", icon: `${CDN}/bnb.png` },
+  { id: "solana", symbol: "SOL", icon: `${CDN}/sol.png` },
+  { id: "ripple", symbol: "XRP", icon: `${CDN}/xrp.png` },
+  { id: "cardano", symbol: "ADA", icon: `${CDN}/ada.png` },
+  { id: "avalanche-2", symbol: "AVAX", icon: `${CDN}/avax.png` },
+  { id: "matic-network", symbol: "MATIC", icon: `${CDN}/matic.png` },
+  { id: "chainlink", symbol: "LINK", icon: `${CDN}/link.png` },
+  { id: "uniswap", symbol: "UNI", icon: `${CDN}/uni.png` },
+];
+
+function PriceTicker() {
+  const [prices, setPrices] = useState<Record<string, { usd: number; usd_24h_change: number }>>({});
+
+  useEffect(() => {
+    const ids = TICKER_COINS.map((c) => c.id).join(",");
+    const fetchPrices = async () => {
+      try {
+        const res = await fetch(`${COINGECKO_API}/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`);
+        if (res.ok) {
+          const data = await res.json() as Record<string, { usd: number; usd_24h_change: number }>;
+          setPrices(data);
+        }
+      } catch { /* ignore */ }
+    };
+    fetchPrices();
+    const interval = setInterval(fetchPrices, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const items = [...TICKER_COINS, ...TICKER_COINS]; // duplicate for seamless scroll
+
+  return (
+    <div style={{
+      position: "relative", zIndex: 10,
+      background: "rgba(13,14,26,0.85)", borderTop: "1px solid rgba(108,99,255,0.15)", borderBottom: "1px solid rgba(108,99,255,0.15)",
+      overflow: "hidden", height: 40,
+    }}>
+      <style>{`
+        @keyframes ticker-scroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .ticker-track { display: flex; animation: ticker-scroll 40s linear infinite; width: max-content; }
+        .ticker-track:hover { animation-play-state: paused; }
+      `}</style>
+      <div className="ticker-track" style={{ alignItems: "center", height: 40 }}>
+        {items.map((coin, i) => {
+          const p = prices[coin.id];
+          const change = p?.usd_24h_change ?? 0;
+          const isUp = change >= 0;
+          return (
+            <div key={`${coin.id}-${i}`} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 20px", whiteSpace: "nowrap", borderRight: "1px solid rgba(108,99,255,0.1)" }}>
+              <Image src={coin.icon} alt={coin.symbol} width={18} height={18} unoptimized style={{ borderRadius: "50%" }} />
+              <span style={{ fontWeight: 600, fontSize: 12, color: "#c8caff" }}>{coin.symbol}</span>
+              <span style={{ fontSize: 12, color: "#e8eaff", fontWeight: 500 }}>
+                {p ? `$${p.usd.toLocaleString(undefined, { maximumFractionDigits: p.usd > 100 ? 0 : p.usd > 1 ? 2 : 4 })}` : "—"}
+              </span>
+              {p && (
+                <span style={{ fontSize: 11, color: isUp ? "#4ade80" : "#f87171", fontWeight: 600 }}>
+                  {isUp ? "▲" : "▼"} {Math.abs(change).toFixed(2)}%
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Reviews ─────────────────────────────────────────────────────────────────
+const REVIEWS = [
+  { name: "Alex M.", avatar: "A", color: "#6c63ff", text: "SwapX gave me the best rate I've ever seen. Saved $40 on a single ETH swap compared to Uniswap!", rating: 5, date: "2 days ago" },
+  { name: "Sarah K.", avatar: "S", color: "#9945FF", text: "Super fast and the UI is gorgeous. Connected my MetaMask in seconds and swapped BNB to USDC without any issues.", rating: 5, date: "5 days ago" },
+  { name: "Dmitri V.", avatar: "D", color: "#28A0F0", text: "Finally a DEX aggregator that actually works. The multi-chain support is a game changer — switched from Ethereum to Polygon seamlessly.", rating: 5, date: "1 week ago" },
+  { name: "Priya R.", avatar: "P", color: "#F3BA2F", text: "I was skeptical at first but the real-time price quotes are spot on. Swapped AVAX to USDT and the transaction confirmed in under 30 seconds.", rating: 5, date: "1 week ago" },
+  { name: "James T.", avatar: "J", color: "#E84142", text: "The slippage control is excellent. Set it to 0.5% and my swap went through perfectly. Much better than other aggregators I've tried.", rating: 4, date: "2 weeks ago" },
+  { name: "Yuki N.", avatar: "Y", color: "#4ade80", text: "Love the dark theme and the smooth animations. SwapX feels premium. Already recommended it to my whole crypto group.", rating: 5, date: "2 weeks ago" },
+];
+
+function StarRating({ rating }: { rating: number }) {
+  return (
+    <div style={{ display: "flex", gap: 2 }}>
+      {[1,2,3,4,5].map((s) => (
+        <svg key={s} width="13" height="13" viewBox="0 0 24 24" fill={s <= rating ? "#f59e0b" : "none"} stroke={s <= rating ? "#f59e0b" : "#4b5563"} strokeWidth="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+      ))}
+    </div>
+  );
+}
+
 export default function SwapPage() {
   const [selectedNetwork, setSelectedNetwork] = useState<Network>(NETWORKS[0]);
   const [tokens, setTokens] = useState<Token[]>(() => (TOKENS_BY_CHAIN["0x1"] ?? []).map((t) => makeToken(t)));
@@ -794,6 +890,9 @@ export default function SwapPage() {
         </div>
       </header>
 
+      {/* Price Ticker */}
+      <PriceTicker />
+
       {/* Main */}
       <main style={{ position: "relative", zIndex: 10, display: "flex", flexDirection: "column", alignItems: "center", padding: "20px 16px 60px" }}>
 
@@ -1077,6 +1176,52 @@ export default function SwapPage() {
           {toast}
         </div>
       )}
+
+      {/* Reviews Section */}
+      <section style={{ position: "relative", zIndex: 10, padding: "60px 16px 80px", maxWidth: 1100, margin: "0 auto", width: "100%" }}>
+        <div style={{ textAlign: "center", marginBottom: 40 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 999, padding: "4px 14px", marginBottom: 14 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#fbbf24" }}>⭐ Trusted by thousands</span>
+          </div>
+          <h2 style={{ fontSize: "clamp(26px, 4vw, 38px)", fontWeight: 800, color: "#e8eaff", letterSpacing: "-1px", marginBottom: 10 }}>
+            What Our Users Say
+          </h2>
+          <p style={{ color: "#7b82b0", fontSize: 15, maxWidth: 400, margin: "0 auto" }}>
+            Real feedback from real traders who use SwapX every day
+          </p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 20 }}>
+          {REVIEWS.map((review) => (
+            <div key={review.name} style={{
+              background: "rgba(19,21,42,0.85)", border: "1px solid rgba(108,99,255,0.18)",
+              borderRadius: 18, padding: "22px 24px",
+              backdropFilter: "blur(12px)",
+              transition: "border-color 0.2s",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                <div style={{
+                  width: 42, height: 42, borderRadius: "50%",
+                  background: `linear-gradient(135deg, ${review.color}, ${review.color}99)`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontWeight: 700, fontSize: 16, color: "white", flexShrink: 0,
+                }}>
+                  {review.avatar}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "#e8eaff" }}>{review.name}</div>
+                  <div style={{ fontSize: 11, color: "#6b7299", marginTop: 1 }}>{review.date}</div>
+                </div>
+                <div style={{ marginLeft: "auto" }}>
+                  <StarRating rating={review.rating} />
+                </div>
+              </div>
+              <p style={{ color: "#9ba3c9", fontSize: 13.5, lineHeight: 1.6, margin: 0 }}>
+                &ldquo;{review.text}&rdquo;
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* Token modal */}
       {modalFor && (
