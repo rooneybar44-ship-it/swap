@@ -313,12 +313,12 @@ export default function SafeSwapPage() {
                     key={s}
                     onClick={() => setSlippage(s)}
                     style={{
-                      padding: "3px 8px", borderRadius: 8, fontSize: 11, fontWeight: 600,
-                      cursor: "pointer", transition: "all 0.15s",
-                      background: slippage === s ? "#eef1ff" : "transparent",
-                      color: slippage === s ? "#4f6ef7" : "#94a3b8",
-                      border: slippage === s ? "1.5px solid rgba(108,99,255,0.4)" : "1.5px solid transparent",
-                    }}
+                        padding: "3px 8px", borderRadius: 8, fontSize: 11, fontWeight: 600,
+                        cursor: "pointer", transition: "all 0.15s",
+                        background: slippage === s ? "rgba(108,99,255,0.2)" : "transparent",
+                        color: slippage === s ? "#9b8fff" : "#6b7299",
+                        border: slippage === s ? "1.5px solid rgba(108,99,255,0.5)" : "1.5px solid transparent",
+                      }}
                   >
                     {s}%
                   </button>
@@ -339,7 +339,7 @@ export default function SafeSwapPage() {
               <button
                 className="token-btn"
                 onClick={() => setModalFor("from")}
-                style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", cursor: "pointer", border: "1.5px solid #dde4f7" }}
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", cursor: "pointer", border: "1.5px solid #252847" }}
               >
                 <TokenAvatar symbol={fromToken.symbol} size="sm" />
                 <span style={{ fontWeight: 700, fontSize: 15, color: "#e8eaff" }}>{fromToken.symbol}</span>
@@ -410,7 +410,7 @@ export default function SafeSwapPage() {
               <button
                 className="token-btn"
                 onClick={() => setModalFor("to")}
-                style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", cursor: "pointer", border: "1.5px solid #dde4f7" }}
+                style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", cursor: "pointer", border: "1.5px solid #252847" }}
               >
                 <TokenAvatar symbol={toToken.symbol} size="sm" />
                 <span style={{ fontWeight: 700, fontSize: 15, color: "#e8eaff" }}>{toToken.symbol}</span>
@@ -442,7 +442,7 @@ export default function SafeSwapPage() {
               ].map((row) => (
                 <div key={row.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "3px 0" }}>
                   <span style={{ fontSize: 12, color: "#6b7299" }}>{row.label}</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: row.green ? "#22c55e" : "#475569" }}>{row.value}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: row.green ? "#22c55e" : "#a0a8d0" }}>{row.value}</span>
                 </div>
               ))}
             </div>
