@@ -8,6 +8,8 @@ The template is a clean Next.js 16 starter with TypeScript and Tailwind CSS 4. I
 
 ## Recently Completed
 
+- [x] Token swap UI — dark theme DEX interface with SwapX branding, animated swap card, token selector modal, slippage settings, stats bar, connect wallet button
+
 - [x] Base Next.js 16 setup with App Router
 - [x] TypeScript configuration with strict mode
 - [x] Tailwind CSS 4 integration
