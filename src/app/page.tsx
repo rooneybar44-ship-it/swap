@@ -390,8 +390,8 @@ export default function SwapPage() {
   const quoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const connected = !!account;
-  // The wallet's current chain matches the selected network
-  const isOnSelectedNetwork = chainId?.toLowerCase() === selectedNetwork.id.toLowerCase();
+  // Solana is non-EVM — treat it as always "on network" (user switches manually in MetaMask)
+  const isOnSelectedNetwork = selectedNetwork.chainId === 0 || chainId?.toLowerCase() === selectedNetwork.id.toLowerCase();
 
   function showToast(msg: string, type: "ok" | "err" | "info" = "ok") {
     setToast(msg);
@@ -422,19 +422,22 @@ export default function SwapPage() {
     try {
       const priceMap = await fetchCoinGeckoPrices(defs.map((t) => t.coingeckoId));
 
-      const balances = await Promise.all(
-        defs.map(async (token) => {
-          try {
-            if (token.address.toLowerCase() === NATIVE.toLowerCase()) {
-              const bal = await window.ethereum!.request({ method: "eth_getBalance", params: [addr, "latest"] }) as string;
-              return parseInt(bal, 16) / 1e18;
-            } else {
-              const raw = await fetchERC20Balance(token.address, addr);
-              return parseInt(raw, 16) / Math.pow(10, token.decimals);
-            }
-          } catch { return 0; }
-        })
-      );
+      // Non-EVM chains (e.g. Solana): skip EVM balance calls, show prices only
+      const balances = net.chainId === 0
+        ? defs.map(() => 0)
+        : await Promise.all(
+            defs.map(async (token) => {
+              try {
+                if (token.address.toLowerCase() === NATIVE.toLowerCase()) {
+                  const bal = await window.ethereum!.request({ method: "eth_getBalance", params: [addr, "latest"] }) as string;
+                  return parseInt(bal, 16) / 1e18;
+                } else {
+                  const raw = await fetchERC20Balance(token.address, addr);
+                  return parseInt(raw, 16) / Math.pow(10, token.decimals);
+                }
+              } catch { return 0; }
+            })
+          );
 
       const updated = defs.map((t, i) => makeToken(t, balances[i], priceMap[t.coingeckoId] ?? 0));
       setTokens(updated);
@@ -544,7 +547,7 @@ export default function SwapPage() {
 
   async function switchToNetwork(net: Network) {
     if (net.chainId === 0) {
-      showToast(`ℹ️ ${net.name} is not an EVM chain — MetaMask not required`, "ok");
+      showToast(`ℹ️ Please switch to ${net.name} manually in MetaMask`, "info");
       return;
     }
     try {
