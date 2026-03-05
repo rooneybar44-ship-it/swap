@@ -1,6 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+declare global {
+  interface Window {
+    ethereum?: {
+      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+      on: (event: string, handler: (...args: unknown[]) => void) => void;
+      removeListener: (event: string, handler: (...args: unknown[]) => void) => void;
+    };
+  }
+}
 
 const TOKENS = [
   { symbol: "ETH", name: "Ethereum", color: "#627EEA", balance: "2.4521", price: 3420.5 },
@@ -139,7 +149,45 @@ export default function SafeSwapPage() {
   const [slippage, setSlippage] = useState("0.5");
   const [modalFor, setModalFor] = useState<"from" | "to" | null>(null);
   const [isSwapping, setIsSwapping] = useState(false);
-  const [connected, setConnected] = useState(false);
+  const [account, setAccount] = useState<string | null>(null);
+  const connected = !!account;
+
+  useEffect(() => {
+    if (!window.ethereum) return;
+    const handleAccountsChanged = (accounts: unknown) => {
+      const arr = accounts as string[];
+      setAccount(arr.length > 0 ? arr[0] : null);
+    };
+    window.ethereum.on("accountsChanged", handleAccountsChanged);
+    // Check if already connected
+    window.ethereum
+      .request({ method: "eth_accounts" })
+      .then((accounts) => {
+        const arr = accounts as string[];
+        if (arr.length > 0) setAccount(arr[0]);
+      })
+      .catch(() => {});
+    return () => {
+      window.ethereum?.removeListener("accountsChanged", handleAccountsChanged);
+    };
+  }, []);
+
+  async function connectWallet() {
+    if (!window.ethereum) {
+      alert("MetaMask не найден. Установите расширение MetaMask в браузере.");
+      return;
+    }
+    try {
+      const accounts = (await window.ethereum.request({ method: "eth_requestAccounts" })) as string[];
+      if (accounts.length > 0) setAccount(accounts[0]);
+    } catch {
+      // user rejected
+    }
+  }
+
+  function disconnectWallet() {
+    setAccount(null);
+  }
 
   const toAmount =
     fromAmount && !isNaN(Number(fromAmount))
@@ -231,7 +279,7 @@ export default function SafeSwapPage() {
 
         {/* Connect */}
         <button
-          onClick={() => setConnected((c) => !c)}
+          onClick={connected ? disconnectWallet : connectWallet}
           style={{
             display: "flex", alignItems: "center", gap: 8,
             padding: "9px 18px", borderRadius: 12, fontSize: 14, fontWeight: 600,
@@ -245,7 +293,7 @@ export default function SafeSwapPage() {
           {connected ? (
             <>
               <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
-              0x1a2b...3c4d
+              {account!.slice(0, 6)}...{account!.slice(-4)}
             </>
           ) : (
             <>
