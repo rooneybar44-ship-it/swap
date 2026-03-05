@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 
 declare global {
@@ -14,71 +14,80 @@ declare global {
 }
 
 const CDN = "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color";
+const PARASWAP_API = "https://apiv5.paraswap.io";
+const COINGECKO_API = "https://api.coingecko.com/api/v3";
+const MAINNET_CHAIN_ID = "0x1";
 
-const INITIAL_TOKENS = [
-  { symbol: "ETH", name: "Ethereum", color: "#627EEA", balance: 2.4521, price: 3420.5, icon: `${CDN}/eth.png` },
-  { symbol: "USDC", name: "USD Coin", color: "#2775CA", balance: 1250.0, price: 1.0, icon: `${CDN}/usdc.png` },
-  { symbol: "BTC", name: "Bitcoin", color: "#F7931A", balance: 0.0821, price: 68200.0, icon: `${CDN}/btc.png` },
-  { symbol: "BNB", name: "BNB", color: "#F3BA2F", balance: 12.5, price: 420.0, icon: `${CDN}/bnb.png` },
-  { symbol: "SOL", name: "Solana", color: "#9945FF", balance: 45.0, price: 150.0, icon: `${CDN}/sol.png` },
-  { symbol: "ADA", name: "Cardano", color: "#0033AD", balance: 5000.0, price: 0.45, icon: `${CDN}/ada.png` },
-  { symbol: "AVAX", name: "Avalanche", color: "#E84142", balance: 80.0, price: 35.0, icon: `${CDN}/avax.png` },
-  { symbol: "MATIC", name: "Polygon", color: "#8247E5", balance: 2000.0, price: 0.85, icon: `${CDN}/matic.png` },
-  { symbol: "DOT", name: "Polkadot", color: "#E6007A", balance: 300.0, price: 7.5, icon: `${CDN}/dot.png` },
-  { symbol: "LINK", name: "Chainlink", color: "#2A5ADA", balance: 150.0, price: 15.0, icon: `${CDN}/link.png` },
-  { symbol: "UNI", name: "Uniswap", color: "#FF007A", balance: 200.0, price: 8.0, icon: `${CDN}/uni.png` },
-  { symbol: "USDT", name: "Tether", color: "#26A17B", balance: 3000.0, price: 1.0, icon: `${CDN}/usdt.png` },
+type TokenDef = {
+  symbol: string;
+  name: string;
+  color: string;
+  decimals: number;
+  address: string;
+  coingeckoId: string;
+  icon: string;
+};
+
+type Token = TokenDef & { balance: number; price: number };
+
+const TOKEN_DEFS: TokenDef[] = [
+  { symbol: "ETH", name: "Ethereum", color: "#627EEA", decimals: 18, address: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", coingeckoId: "ethereum", icon: `${CDN}/eth.png` },
+  { symbol: "USDC", name: "USD Coin", color: "#2775CA", decimals: 6, address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", coingeckoId: "usd-coin", icon: `${CDN}/usdc.png` },
+  { symbol: "USDT", name: "Tether", color: "#26A17B", decimals: 6, address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", coingeckoId: "tether", icon: `${CDN}/usdt.png` },
+  { symbol: "WBTC", name: "Wrapped Bitcoin", color: "#F7931A", decimals: 8, address: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", coingeckoId: "wrapped-bitcoin", icon: `${CDN}/wbtc.png` },
+  { symbol: "LINK", name: "Chainlink", color: "#2A5ADA", decimals: 18, address: "0x514910771AF9Ca656af840dff83E8264EcF986CA", coingeckoId: "chainlink", icon: `${CDN}/link.png` },
+  { symbol: "UNI", name: "Uniswap", color: "#FF007A", decimals: 18, address: "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", coingeckoId: "uniswap", icon: `${CDN}/uni.png` },
+  { symbol: "MATIC", name: "Polygon", color: "#8247E5", decimals: 18, address: "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0", coingeckoId: "matic-network", icon: `${CDN}/matic.png` },
+  { symbol: "AAVE", name: "Aave", color: "#B6509E", decimals: 18, address: "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9", coingeckoId: "aave", icon: `${CDN}/aave.png` },
 ];
 
-type TokenData = (typeof INITIAL_TOKENS)[number];
-type Token = TokenData & { balance: number };
+function makeToken(def: TokenDef, balance = 0, price = 0): Token {
+  return { ...def, balance, price };
+}
 
-function TokenAvatar({ symbol, color, icon, size = "md" }: { symbol: string; color?: string; icon?: string; size?: "sm" | "md" | "lg" }) {
-  const token = INITIAL_TOKENS.find((t) => t.symbol === symbol);
-  const iconUrl = icon ?? token?.icon;
+function encodeBalanceOf(walletAddress: string): string {
+  const padded = walletAddress.toLowerCase().replace("0x", "").padStart(64, "0");
+  return "0x70a08231" + padded;
+}
+
+function encodeAllowance(owner: string, spender: string): string {
+  const o = owner.toLowerCase().replace("0x", "").padStart(64, "0");
+  const s = spender.toLowerCase().replace("0x", "").padStart(64, "0");
+  return "0xdd62ed3e" + o + s;
+}
+
+async function fetchERC20Balance(tokenAddress: string, walletAddress: string): Promise<string> {
+  const result = await window.ethereum!.request({
+    method: "eth_call",
+    params: [{ to: tokenAddress, data: encodeBalanceOf(walletAddress) }, "latest"],
+  }) as string;
+  return result;
+}
+
+async function fetchCoinGeckoPrices(ids: string[]): Promise<Record<string, number>> {
+  const res = await fetch(`${COINGECKO_API}/simple/price?ids=${ids.join(",")}&vs_currencies=usd`);
+  const data = await res.json() as Record<string, { usd: number }>;
+  const out: Record<string, number> = {};
+  for (const id of ids) out[id] = data[id]?.usd ?? 0;
+  return out;
+}
+
+function TokenAvatar({ token, size = "md" }: { token: TokenDef; size?: "sm" | "md" | "lg" }) {
   const dim = size === "sm" ? 28 : size === "lg" ? 44 : 36;
-  const fs = size === "sm" ? 11 : size === "lg" ? 15 : 13;
-
-  if (iconUrl) {
-    return (
-      <Image
-        src={iconUrl}
-        alt={symbol}
-        width={dim}
-        height={dim}
-        unoptimized
-        style={{ borderRadius: "50%", flexShrink: 0 }}
-      />
-    );
-  }
-
   return (
-    <div
-      style={{
-        width: dim,
-        height: dim,
-        borderRadius: "50%",
-        background: color || token?.color || "#4f6ef7",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color: "white",
-        fontWeight: 700,
-        fontSize: fs,
-        flexShrink: 0,
-        letterSpacing: "-0.5px",
-      }}
-    >
-      {symbol.slice(0, 3)}
-    </div>
+    <Image
+      src={token.icon}
+      alt={token.symbol}
+      width={dim}
+      height={dim}
+      unoptimized
+      style={{ borderRadius: "50%", flexShrink: 0 }}
+    />
   );
 }
 
 function TokenSelectModal({
-  onSelect,
-  onClose,
-  excludeSymbol,
-  tokens,
+  onSelect, onClose, excludeSymbol, tokens,
 }: {
   onSelect: (token: Token) => void;
   onClose: () => void;
@@ -99,10 +108,7 @@ function TokenSelectModal({
       style={{ background: "rgba(5,6,20,0.7)", backdropFilter: "blur(6px)" }}
       onClick={onClose}
     >
-      <div
-        className="token-modal w-full max-w-sm overflow-hidden animate-fadein"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="token-modal w-full max-w-sm overflow-hidden animate-fadein" onClick={(e) => e.stopPropagation()}>
         <div className="p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 style={{ color: "#e8eaff", fontWeight: 700, fontSize: 17 }}>Select Token</h3>
@@ -114,9 +120,7 @@ function TokenSelectModal({
                 color: "#7b82b0", cursor: "pointer", fontSize: 14,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}
-            >
-              ✕
-            </button>
+            >✕</button>
           </div>
           <div className="relative mb-4">
             <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#6b7299", fontSize: 14 }}>🔍</span>
@@ -138,7 +142,7 @@ function TokenSelectModal({
             All Tokens
           </div>
         </div>
-        <div style={{ maxHeight: 280, overflowY: "auto", paddingBottom: 8 }}>
+        <div style={{ maxHeight: 300, overflowY: "auto", paddingBottom: 8 }}>
           {filtered.map((token) => (
             <button
               key={token.symbol}
@@ -150,14 +154,18 @@ function TokenSelectModal({
                 cursor: "pointer", textAlign: "left",
               }}
             >
-              <TokenAvatar symbol={token.symbol} size="md" />
+              <TokenAvatar token={token} size="md" />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ color: "#e8eaff", fontWeight: 600, fontSize: 14 }}>{token.symbol}</div>
                 <div style={{ color: "#6b7299", fontSize: 12 }}>{token.name}</div>
               </div>
               <div style={{ textAlign: "right" }}>
-                <div style={{ color: "#c0c8f0", fontSize: 13, fontWeight: 500 }}>{token.balance.toFixed(4)}</div>
-                <div style={{ color: "#6b7299", fontSize: 11 }}>${token.price.toLocaleString()}</div>
+                <div style={{ color: "#c0c8f0", fontSize: 13, fontWeight: 500 }}>
+                  {token.balance > 0 ? token.balance.toFixed(4) : "—"}
+                </div>
+                {token.price > 0 && (
+                  <div style={{ color: "#6b7299", fontSize: 11 }}>${token.price.toLocaleString(undefined, { maximumFractionDigits: 4 })}</div>
+                )}
               </div>
             </button>
           ))}
@@ -167,101 +175,262 @@ function TokenSelectModal({
   );
 }
 
-export default function SafeSwapPage() {
-  const [tokens, setTokens] = useState<Token[]>(INITIAL_TOKENS);
-  const [fromToken, setFromToken] = useState<Token>(INITIAL_TOKENS[0]);
-  const [toToken, setToToken] = useState<Token>(INITIAL_TOKENS[1]);
+export default function SwapPage() {
+  const [tokens, setTokens] = useState<Token[]>(TOKEN_DEFS.map((t) => makeToken(t)));
+  const [fromToken, setFromToken] = useState<Token>(makeToken(TOKEN_DEFS[0]));
+  const [toToken, setToToken] = useState<Token>(makeToken(TOKEN_DEFS[1]));
   const [fromAmount, setFromAmount] = useState("");
+  const [toAmount, setToAmount] = useState("");
   const [slippage, setSlippage] = useState("0.5");
   const [modalFor, setModalFor] = useState<"from" | "to" | null>(null);
   const [isSwapping, setIsSwapping] = useState(false);
-  const [swapSuccess, setSwapSuccess] = useState<string | null>(null);
+  const [balancesLoading, setBalancesLoading] = useState(false);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<"ok" | "err" | "info">("ok");
   const [account, setAccount] = useState<string | null>(null);
+  const [chainId, setChainId] = useState<string | null>(null);
+  const [exchangeRate, setExchangeRate] = useState<string | null>(null);
+  const quoteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const connected = !!account;
+  const isMainnet = chainId === MAINNET_CHAIN_ID;
+
+  function showToast(msg: string, type: "ok" | "err" | "info" = "ok") {
+    setToast(msg);
+    setToastType(type);
+    setTimeout(() => setToast(null), 5000);
+  }
+
+  const syncToken = useCallback((sym: string, updatedList: Token[]) => {
+    return updatedList.find((t) => t.symbol === sym);
+  }, []);
+
+  const loadBalancesAndPrices = useCallback(async (addr: string) => {
+    if (!window.ethereum) return;
+    setBalancesLoading(true);
+    try {
+      const priceMap = await fetchCoinGeckoPrices(TOKEN_DEFS.map((t) => t.coingeckoId));
+
+      const balances = await Promise.all(
+        TOKEN_DEFS.map(async (token) => {
+          try {
+            if (token.address.toLowerCase() === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee") {
+              const bal = await window.ethereum!.request({ method: "eth_getBalance", params: [addr, "latest"] }) as string;
+              return parseInt(bal, 16) / 1e18;
+            } else {
+              const raw = await fetchERC20Balance(token.address, addr);
+              return parseInt(raw, 16) / Math.pow(10, token.decimals);
+            }
+          } catch { return 0; }
+        })
+      );
+
+      const updated = TOKEN_DEFS.map((t, i) => makeToken(t, balances[i], priceMap[t.coingeckoId] ?? 0));
+      setTokens(updated);
+      setFromToken((prev) => syncToken(prev.symbol, updated) ?? prev);
+      setToToken((prev) => syncToken(prev.symbol, updated) ?? prev);
+    } catch (e) {
+      console.error("Failed to load balances", e);
+    } finally {
+      setBalancesLoading(false);
+    }
+  }, [syncToken]);
+
+  // Fetch quote from Paraswap, fallback to price-based calc
+  const fetchQuote = useCallback(async (amount: string, from: Token, to: Token) => {
+    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+      setToAmount("");
+      setExchangeRate(null);
+      return;
+    }
+    setQuoteLoading(true);
+    try {
+      const amtRaw = BigInt(Math.round(Number(amount) * Math.pow(10, from.decimals))).toString();
+      const url = `${PARASWAP_API}/prices?srcToken=${from.address}&srcDecimals=${from.decimals}&destToken=${to.address}&destDecimals=${to.decimals}&amount=${amtRaw}&side=SELL&network=1`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("quote_api_fail");
+      const data = await res.json() as { priceRoute: { destAmount: string } };
+      const destAmt = Number(data.priceRoute.destAmount) / Math.pow(10, to.decimals);
+      setToAmount(destAmt.toFixed(6));
+      const rate = (destAmt / Number(amount)).toFixed(6);
+      setExchangeRate(`1 ${from.symbol} = ${rate} ${to.symbol}`);
+    } catch {
+      // Fallback: use CoinGecko prices
+      if (from.price > 0 && to.price > 0) {
+        const out = (Number(amount) * from.price) / to.price;
+        setToAmount(out.toFixed(6));
+        setExchangeRate(`1 ${from.symbol} ≈ ${(from.price / to.price).toFixed(6)} ${to.symbol}`);
+      }
+    } finally {
+      setQuoteLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (quoteTimer.current) clearTimeout(quoteTimer.current);
+    quoteTimer.current = setTimeout(() => fetchQuote(fromAmount, fromToken, toToken), 600);
+    return () => { if (quoteTimer.current) clearTimeout(quoteTimer.current); };
+  }, [fromAmount, fromToken, toToken, fetchQuote]);
 
   useEffect(() => {
     if (!window.ethereum) return;
-    const handleAccountsChanged = (accounts: unknown) => {
-      const arr = accounts as string[];
-      setAccount(arr.length > 0 ? arr[0] : null);
+    const onAccountsChanged = (accs: unknown) => {
+      const arr = accs as string[];
+      setAccount(arr[0] ?? null);
     };
-    window.ethereum.on("accountsChanged", handleAccountsChanged);
-    // Check if already connected
-    window.ethereum
-      .request({ method: "eth_accounts" })
-      .then((accounts) => {
-        const arr = accounts as string[];
-        if (arr.length > 0) setAccount(arr[0]);
-      })
-      .catch(() => {});
+    const onChainChanged = (chain: unknown) => setChainId(chain as string);
+    window.ethereum.on("accountsChanged", onAccountsChanged);
+    window.ethereum.on("chainChanged", onChainChanged);
+    window.ethereum.request({ method: "eth_accounts" }).then((a) => {
+      const arr = a as string[];
+      if (arr[0]) setAccount(arr[0]);
+    }).catch(() => {});
+    window.ethereum.request({ method: "eth_chainId" }).then((c) => setChainId(c as string)).catch(() => {});
     return () => {
-      window.ethereum?.removeListener("accountsChanged", handleAccountsChanged);
+      window.ethereum?.removeListener("accountsChanged", onAccountsChanged);
+      window.ethereum?.removeListener("chainChanged", onChainChanged);
     };
   }, []);
 
+  useEffect(() => {
+    if (account && isMainnet) loadBalancesAndPrices(account);
+  }, [account, isMainnet, loadBalancesAndPrices]);
+
   async function connectWallet() {
     if (!window.ethereum) {
-      alert("MetaMask не найден. Установите расширение MetaMask в браузере.");
+      alert("MetaMask not found. Please install MetaMask browser extension.");
       return;
     }
     try {
-      const accounts = (await window.ethereum.request({ method: "eth_requestAccounts" })) as string[];
-      if (accounts.length > 0) setAccount(accounts[0]);
+      const accs = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
+      if (accs[0]) setAccount(accs[0]);
+    } catch { /* user rejected */ }
+  }
+
+  async function switchToMainnet() {
+    try {
+      await window.ethereum?.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: MAINNET_CHAIN_ID }],
+      });
     } catch {
-      // user rejected
+      showToast("❌ Failed to switch to Ethereum Mainnet", "err");
     }
   }
 
-  function disconnectWallet() {
-    setAccount(null);
-  }
-
-  const toAmount =
-    fromAmount && !isNaN(Number(fromAmount))
-      ? ((Number(fromAmount) * fromToken.price) / toToken.price).toFixed(6)
-      : "";
-
-  const exchangeRate = (fromToken.price / toToken.price).toFixed(6);
-
-  const usdValue =
-    fromAmount && !isNaN(Number(fromAmount))
-      ? (Number(fromAmount) * fromToken.price).toFixed(2)
-      : null;
-
   function handleFlip() {
-    const tmp = fromToken;
     setFromToken(toToken);
-    setToToken(tmp);
+    setToToken(fromToken);
     setFromAmount(toAmount);
+    setToAmount(fromAmount);
   }
 
   async function handleSwap() {
-    if (!connected || !fromAmount) return;
+    if (!connected || !account) return;
+    if (!isMainnet) { await switchToMainnet(); return; }
+
     const amt = Number(fromAmount);
-    if (isNaN(amt) || amt <= 0) return;
+    if (!fromAmount || isNaN(amt) || amt <= 0) return;
     if (amt > fromToken.balance) {
-      setSwapSuccess(`❌ Insufficient ${fromToken.symbol} balance`);
-      setTimeout(() => setSwapSuccess(null), 3000);
+      showToast(`❌ Insufficient ${fromToken.symbol} balance`, "err");
       return;
     }
+
     setIsSwapping(true);
-    await new Promise((r) => setTimeout(r, 1800));
-    const received = Number(toAmount);
-    // Update balances
-    setTokens((prev) =>
-      prev.map((t) => {
-        if (t.symbol === fromToken.symbol) return { ...t, balance: t.balance - amt };
-        if (t.symbol === toToken.symbol) return { ...t, balance: t.balance + received };
-        return t;
-      })
-    );
-    setFromToken((t) => ({ ...t, balance: t.balance - amt }));
-    setToToken((t) => ({ ...t, balance: t.balance + received }));
-    setIsSwapping(false);
-    setFromAmount("");
-    setSwapSuccess(`✅ Swapped ${amt} ${fromToken.symbol} → ${received.toFixed(6)} ${toToken.symbol}`);
-    setTimeout(() => setSwapSuccess(null), 4000);
+    try {
+      const amtRaw = BigInt(Math.round(amt * Math.pow(10, fromToken.decimals))).toString();
+
+      // Step 1: Get price route
+      showToast("🔍 Getting best route...", "info");
+      const priceUrl = `${PARASWAP_API}/prices?srcToken=${fromToken.address}&srcDecimals=${fromToken.decimals}&destToken=${toToken.address}&destDecimals=${toToken.decimals}&amount=${amtRaw}&side=SELL&network=1&userAddress=${account}`;
+      const priceRes = await fetch(priceUrl);
+      if (!priceRes.ok) throw new Error("Failed to get price route");
+      const priceData = await priceRes.json() as { priceRoute: unknown };
+
+      // Step 2: Build transaction
+      const buildRes = await fetch(`${PARASWAP_API}/transactions/1?ignoreChecks=true`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          srcToken: fromToken.address,
+          srcDecimals: fromToken.decimals,
+          destToken: toToken.address,
+          destDecimals: toToken.decimals,
+          srcAmount: amtRaw,
+          slippage: Math.round(Number(slippage) * 100),
+          priceRoute: priceData.priceRoute,
+          userAddress: account,
+        }),
+      });
+      if (!buildRes.ok) {
+        const errJson = await buildRes.json() as { error?: string };
+        throw new Error(errJson.error ?? "Failed to build transaction");
+      }
+      const txData = await buildRes.json() as { to: string; data: string; value?: string; gas?: string };
+
+      // Step 3: ERC-20 approval if needed
+      const isNativeETH = fromToken.address.toLowerCase() === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+      if (!isNativeETH) {
+        const allowanceHex = await window.ethereum!.request({
+          method: "eth_call",
+          params: [{ to: fromToken.address, data: encodeAllowance(account, txData.to) }, "latest"],
+        }) as string;
+
+        const allowance = BigInt(allowanceHex || "0x0");
+        const needed = BigInt(amtRaw);
+
+        if (allowance < needed) {
+          showToast("🔐 Approving token spend...", "info");
+          const maxUint256 = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+          const approveData = "0x095ea7b3" +
+            txData.to.toLowerCase().replace("0x", "").padStart(64, "0") +
+            maxUint256;
+
+          await window.ethereum!.request({
+            method: "eth_sendTransaction",
+            params: [{ from: account, to: fromToken.address, data: approveData }],
+          });
+          showToast("✅ Approved! Submitting swap...", "ok");
+          await new Promise((r) => setTimeout(r, 2000));
+        }
+      }
+
+      // Step 4: Send swap
+      const txHash = await window.ethereum!.request({
+        method: "eth_sendTransaction",
+        params: [{
+          from: account,
+          to: txData.to,
+          data: txData.data,
+          value: txData.value && txData.value !== "0" ? "0x" + BigInt(txData.value).toString(16) : "0x0",
+          ...(txData.gas ? { gas: "0x" + Number(txData.gas).toString(16) } : {}),
+        }],
+      }) as string;
+
+      showToast(`✅ Swap submitted! ${txHash.slice(0, 8)}...${txHash.slice(-6)}`, "ok");
+      setFromAmount("");
+      setToAmount("");
+
+      // Reload balances after confirmation
+      setTimeout(() => loadBalancesAndPrices(account), 8000);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      if (!msg.toLowerCase().includes("user rejected") && !msg.toLowerCase().includes("user denied")) {
+        showToast(`❌ ${msg.slice(0, 80)}`, "err");
+      }
+    } finally {
+      setIsSwapping(false);
+    }
   }
+
+  const usdValue = fromAmount && !isNaN(Number(fromAmount)) && fromToken.price > 0
+    ? (Number(fromAmount) * fromToken.price).toFixed(2)
+    : null;
+
+  const toUsdValue = toAmount && !isNaN(Number(toAmount)) && toToken.price > 0
+    ? (Number(toAmount) * toToken.price).toFixed(2)
+    : null;
 
   return (
     <div style={{ minHeight: "100vh", background: "#0d0e1a" }}>
@@ -270,9 +439,6 @@ export default function SafeSwapPage() {
         <div style={{ position: "absolute", top: "-100px", right: "-100px", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(108,99,255,0.22) 0%, transparent 65%)" }} />
         <div style={{ position: "absolute", bottom: "-80px", left: "-80px", width: 420, height: 420, borderRadius: "50%", background: "radial-gradient(circle, rgba(79,110,247,0.15) 0%, transparent 65%)" }} />
         <div style={{ position: "absolute", top: "40%", left: "15%", width: 280, height: 280, borderRadius: "50%", background: "radial-gradient(circle, rgba(153,69,255,0.1) 0%, transparent 65%)" }} />
-        <div style={{ position: "absolute", top: "20%", right: "20%", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(34,197,94,0.07) 0%, transparent 65%)" }} />
-        <div style={{ position: "absolute", bottom: "25%", right: "10%", width: 240, height: 240, borderRadius: "50%", background: "radial-gradient(circle, rgba(247,147,26,0.07) 0%, transparent 65%)" }} />
-        {/* Grid overlay */}
         <div style={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(rgba(108,99,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(108,99,255,0.04) 1px, transparent 1px)", backgroundSize: "60px 60px" }} />
       </div>
 
@@ -282,7 +448,6 @@ export default function SafeSwapPage() {
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "18px 32px", maxWidth: 1100, margin: "0 auto",
       }}>
-        {/* Logo */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{
             width: 38, height: 38, borderRadius: 12,
@@ -291,34 +456,34 @@ export default function SafeSwapPage() {
             boxShadow: "0 4px 12px rgba(108,99,255,0.4)",
           }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L4 7v5c0 5.25 3.4 10.15 8 11.35C16.6 22.15 20 17.25 20 12V7L12 2z" fill="white" fillOpacity="0.9"/>
-              <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: 18, color: "#e8eaff", letterSpacing: "-0.5px" }}>SafeSwap</div>
-            <div style={{ fontSize: 10, color: "#7b82b0", fontWeight: 500, marginTop: -2 }}>Secure Exchange</div>
+            <div style={{ fontWeight: 800, fontSize: 18, color: "#e8eaff", letterSpacing: "-0.5px" }}>SwapX</div>
+            <div style={{ fontSize: 10, color: "#7b82b0", fontWeight: 500, marginTop: -2 }}>DEX Aggregator</div>
           </div>
         </div>
 
-        {/* Nav */}
         <nav style={{ display: "flex", gap: 4 }} className="hidden md:flex">
-          <button
-            style={{
-              padding: "8px 16px", borderRadius: 10, fontSize: 14, fontWeight: 500,
-              border: "none", cursor: "pointer",
-              background: "rgba(108,99,255,0.2)",
-              color: "#9b8fff",
-              transition: "all 0.15s",
-            }}
-          >
-            Swap
-          </button>
+          <button style={{ padding: "8px 16px", borderRadius: 10, fontSize: 14, fontWeight: 500, border: "none", cursor: "pointer", background: "rgba(108,99,255,0.2)", color: "#9b8fff" }}>Swap</button>
         </nav>
 
-        {/* Connect */}
+        {connected && !isMainnet && (
+          <button
+            onClick={switchToMainnet}
+            style={{
+              padding: "9px 18px", borderRadius: 12, fontSize: 13, fontWeight: 600,
+              background: "rgba(239,68,68,0.15)", color: "#f87171",
+              border: "1.5px solid rgba(239,68,68,0.3)", cursor: "pointer",
+            }}
+          >
+            ⚠️ Switch to Mainnet
+          </button>
+        )}
+
         <button
-          onClick={connected ? disconnectWallet : connectWallet}
+          onClick={connected ? () => setAccount(null) : connectWallet}
           style={{
             display: "flex", alignItems: "center", gap: 8,
             padding: "9px 18px", borderRadius: 12, fontSize: 14, fontWeight: 600,
@@ -333,6 +498,7 @@ export default function SafeSwapPage() {
             <>
               <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
               {account!.slice(0, 6)}...{account!.slice(-4)}
+              {balancesLoading && <span style={{ fontSize: 11, opacity: 0.7 }}>⟳</span>}
             </>
           ) : (
             <>
@@ -353,19 +519,16 @@ export default function SafeSwapPage() {
         {/* Hero */}
         <div className="animate-float" style={{ textAlign: "center", marginBottom: 36 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.25)", borderRadius: 999, padding: "4px 14px", marginBottom: 16 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L4 7v5c0 5.25 3.4 10.15 8 11.35C16.6 22.15 20 17.25 20 12V7L12 2z" fill="#22c55e"/>
-            </svg>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#4ade80" }}>Audited & Secure</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#4ade80" }}>⚡ Powered by Paraswap</span>
           </div>
           <h1 style={{ fontSize: "clamp(36px, 6vw, 56px)", fontWeight: 800, color: "#e8eaff", letterSpacing: "-1.5px", lineHeight: 1.1, marginBottom: 12 }}>
             Swap Tokens{" "}
             <span style={{ background: "linear-gradient(135deg, #6c63ff, #b09fff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-              Safely
+              Instantly
             </span>
           </h1>
           <p style={{ color: "#7b82b0", fontSize: 17, maxWidth: 420, margin: "0 auto" }}>
-            Best rates across all major DEXs — protected by multi-layer security
+            Best rates from all major DEXes — real balances, real swaps
           </p>
         </div>
 
@@ -392,20 +555,19 @@ export default function SafeSwapPage() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
             <div style={{ fontWeight: 700, fontSize: 16, color: "#e8eaff" }}>Swap</div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span className="badge-safe">🔒 Protected</span>
-              {/* Slippage */}
+              <span className="badge-safe">🔒 Non-custodial</span>
               <div style={{ display: "flex", gap: 4, marginLeft: 8 }}>
                 {["0.1", "0.5", "1.0"].map((s) => (
                   <button
                     key={s}
                     onClick={() => setSlippage(s)}
                     style={{
-                        padding: "3px 8px", borderRadius: 8, fontSize: 11, fontWeight: 600,
-                        cursor: "pointer", transition: "all 0.15s",
-                        background: slippage === s ? "rgba(108,99,255,0.2)" : "transparent",
-                        color: slippage === s ? "#9b8fff" : "#6b7299",
-                        border: slippage === s ? "1.5px solid rgba(108,99,255,0.5)" : "1.5px solid transparent",
-                      }}
+                      padding: "3px 8px", borderRadius: 8, fontSize: 11, fontWeight: 600,
+                      cursor: "pointer", transition: "all 0.15s",
+                      background: slippage === s ? "rgba(108,99,255,0.2)" : "transparent",
+                      color: slippage === s ? "#9b8fff" : "#6b7299",
+                      border: slippage === s ? "1.5px solid rgba(108,99,255,0.5)" : "1.5px solid transparent",
+                    }}
                   >
                     {s}%
                   </button>
@@ -419,7 +581,14 @@ export default function SafeSwapPage() {
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
               <span style={{ fontSize: 12, color: "#6b7299", fontWeight: 500 }}>You Pay</span>
               <span style={{ fontSize: 12, color: "#6b7299" }}>
-                Balance: <span style={{ color: "#a0a8d0", fontWeight: 600 }}>{fromToken.balance.toFixed(4)} {fromToken.symbol}</span>
+                Balance:{" "}
+                <span style={{ color: "#a0a8d0", fontWeight: 600 }}>
+                  {connected && isMainnet
+                    ? balancesLoading
+                      ? "..."
+                      : `${fromToken.balance.toFixed(4)} ${fromToken.symbol}`
+                    : `—`}
+                </span>
               </span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -428,7 +597,7 @@ export default function SafeSwapPage() {
                 onClick={() => setModalFor("from")}
                 style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", cursor: "pointer", border: "1.5px solid #252847" }}
               >
-                <TokenAvatar symbol={fromToken.symbol} size="sm" />
+                <TokenAvatar token={fromToken} size="sm" />
                 <span style={{ fontWeight: 700, fontSize: 15, color: "#e8eaff" }}>{fromToken.symbol}</span>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ color: "#6b7299" }}>
                   <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -450,29 +619,30 @@ export default function SafeSwapPage() {
                 )}
               </div>
             </div>
-            <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-              {["25%", "50%", "75%", "MAX"].map((pct) => (
-                <button
-                  key={pct}
-                  style={{
-                    flex: 1, fontSize: 11, fontWeight: 600, padding: "5px 0",
-                    borderRadius: 8, cursor: "pointer", transition: "all 0.15s",
-                    background: "#0d0e1a", color: "#7b82b0",
-                    border: "1px solid #252847",
-                  }}
-                  onClick={() => {
-                    const bal = fromToken.balance;
-                    const multiplier = pct === "MAX" ? 1 : parseFloat(pct) / 100;
-                    setFromAmount((bal * multiplier).toFixed(4));
-                  }}
-                >
-                  {pct}
-                </button>
-              ))}
-            </div>
+            {connected && isMainnet && fromToken.balance > 0 && (
+              <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+                {["25%", "50%", "75%", "MAX"].map((pct) => (
+                  <button
+                    key={pct}
+                    style={{
+                      flex: 1, fontSize: 11, fontWeight: 600, padding: "5px 0",
+                      borderRadius: 8, cursor: "pointer", transition: "all 0.15s",
+                      background: "#0d0e1a", color: "#7b82b0",
+                      border: "1px solid #252847",
+                    }}
+                    onClick={() => {
+                      const mul = pct === "MAX" ? 1 : parseFloat(pct) / 100;
+                      setFromAmount((fromToken.balance * mul).toFixed(6));
+                    }}
+                  >
+                    {pct}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Flip button */}
+          {/* Flip */}
           <div style={{ display: "flex", justifyContent: "center", margin: "4px 0", position: "relative", zIndex: 1 }}>
             <button
               onClick={handleFlip}
@@ -490,7 +660,14 @@ export default function SafeSwapPage() {
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
               <span style={{ fontSize: 12, color: "#6b7299", fontWeight: 500 }}>You Receive</span>
               <span style={{ fontSize: 12, color: "#6b7299" }}>
-                Balance: <span style={{ color: "#a0a8d0", fontWeight: 600 }}>{toToken.balance.toFixed(4)} {toToken.symbol}</span>
+                Balance:{" "}
+                <span style={{ color: "#a0a8d0", fontWeight: 600 }}>
+                  {connected && isMainnet
+                    ? balancesLoading
+                      ? "..."
+                      : `${toToken.balance.toFixed(4)} ${toToken.symbol}`
+                    : "—"}
+                </span>
               </span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -499,7 +676,7 @@ export default function SafeSwapPage() {
                 onClick={() => setModalFor("to")}
                 style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", cursor: "pointer", border: "1.5px solid #252847" }}
               >
-                <TokenAvatar symbol={toToken.symbol} size="sm" />
+                <TokenAvatar token={toToken} size="sm" />
                 <span style={{ fontWeight: 700, fontSize: 15, color: "#e8eaff" }}>{toToken.symbol}</span>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ color: "#6b7299" }}>
                   <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -507,29 +684,31 @@ export default function SafeSwapPage() {
               </button>
               <div style={{ flex: 1, textAlign: "right" }}>
                 <div style={{ fontSize: 24, fontWeight: 700, color: toAmount ? "#e8eaff" : "#c8d0e7" }}>
-                  {toAmount || "0.00"}
+                  {quoteLoading ? (
+                    <span style={{ fontSize: 14, color: "#6b7299" }}>Fetching quote...</span>
+                  ) : (
+                    toAmount || "0.00"
+                  )}
                 </div>
-                {toAmount && (
-                  <div style={{ fontSize: 12, color: "#6b7299", marginTop: 2 }}>
-                    ≈ ${(Number(toAmount) * toToken.price).toFixed(2)}
-                  </div>
+                {toUsdValue && !quoteLoading && (
+                  <div style={{ fontSize: 12, color: "#6b7299", marginTop: 2 }}>≈ ${toUsdValue}</div>
                 )}
               </div>
             </div>
           </div>
 
           {/* Rate info */}
-          {fromAmount && toAmount && (
+          {exchangeRate && fromAmount && toAmount && (
             <div className="info-row" style={{ padding: "12px 14px", marginBottom: 16 }}>
               {[
-                { label: "Exchange Rate", value: `1 ${fromToken.symbol} = ${exchangeRate} ${toToken.symbol}` },
-                { label: "Price Impact", value: "< 0.01%", green: true },
-                { label: "Network Fee", value: "~$2.40" },
-                { label: "Slippage", value: `${slippage}%` },
+                { label: "Exchange Rate", value: exchangeRate },
+                { label: "Slippage Tolerance", value: `${slippage}%` },
+                { label: "Network Fee", value: "~$2–5 (ETH gas)" },
+                { label: "Routing", value: "Paraswap DEX Aggregator" },
               ].map((row) => (
                 <div key={row.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "3px 0" }}>
                   <span style={{ fontSize: 12, color: "#6b7299" }}>{row.label}</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: row.green ? "#22c55e" : "#a0a8d0" }}>{row.value}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#a0a8d0", maxWidth: 200, textAlign: "right" }}>{row.value}</span>
                 </div>
               ))}
             </div>
@@ -537,10 +716,16 @@ export default function SafeSwapPage() {
 
           {/* Swap button */}
           <button
-            disabled={!connected || !fromAmount || isSwapping}
-            onClick={handleSwap}
+            disabled={(!connected || !fromAmount || isSwapping || quoteLoading) && connected}
+            onClick={
+              !connected
+                ? connectWallet
+                : connected && !isMainnet
+                ? switchToMainnet
+                : handleSwap
+            }
             className="btn-primary"
-            style={{ width: "100%", padding: "15px 0", fontSize: 15, border: "none", cursor: "pointer" }}
+            style={{ width: "100%", padding: "15px 0", fontSize: 15, border: "none", cursor: "pointer", opacity: isSwapping ? 0.8 : 1 }}
           >
             {isSwapping ? (
               <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
@@ -548,12 +733,16 @@ export default function SafeSwapPage() {
                   <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="3" strokeOpacity="0.3"/>
                   <path d="M12 2a10 10 0 0110 10" stroke="white" strokeWidth="3" strokeLinecap="round"/>
                 </svg>
-                Swapping securely...
+                Processing swap...
               </span>
             ) : !connected ? (
               "Connect Wallet to Swap"
+            ) : !isMainnet ? (
+              "Switch to Ethereum Mainnet"
             ) : !fromAmount ? (
               "Enter an Amount"
+            ) : quoteLoading ? (
+              "Getting quote..."
             ) : (
               `Swap ${fromToken.symbol} → ${toToken.symbol}`
             )}
@@ -563,17 +752,16 @@ export default function SafeSwapPage() {
         {/* Trust badges */}
         <div style={{ marginTop: 24, display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
           {[
-            { icon: "🔒", text: "Audited by Certik" },
-            { icon: "🛡️", text: "Non-custodial" },
-            { icon: "⚡", text: "Powered by 1inch" },
-            { icon: "🌐", text: "Multi-chain" },
+            { icon: "🔒", text: "Non-custodial" },
+            { icon: "⚡", text: "Paraswap routing" },
+            { icon: "🌐", text: "Ethereum Mainnet" },
+            { icon: "📊", text: "Best price routing" },
           ].map((b) => (
             <div key={b.text} style={{
               display: "flex", alignItems: "center", gap: 6,
               background: "#13152a", border: "1px solid #252847",
               borderRadius: 999, padding: "5px 14px",
               fontSize: 12, color: "#7b82b0", fontWeight: 500,
-              boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
             }}>
               <span>{b.icon}</span>
               <span>{b.text}</span>
@@ -582,16 +770,18 @@ export default function SafeSwapPage() {
         </div>
       </main>
 
-      {/* Success toast */}
-      {swapSuccess && (
+      {/* Toast */}
+      {toast && (
         <div style={{
           position: "fixed", bottom: 32, left: "50%", transform: "translateX(-50%)",
-          background: "#13152a", border: "1.5px solid #252847", borderRadius: 14,
+          background: "#13152a",
+          border: `1.5px solid ${toastType === "err" ? "rgba(239,68,68,0.4)" : toastType === "info" ? "rgba(108,99,255,0.4)" : "#252847"}`,
+          borderRadius: 14,
           padding: "14px 24px", color: "#e8eaff", fontSize: 14, fontWeight: 600,
           boxShadow: "0 8px 32px rgba(0,0,0,0.4)", zIndex: 100,
-          animation: "fadein 0.3s ease",
+          animation: "fadein 0.3s ease", maxWidth: "90vw", textAlign: "center",
         }}>
-          {swapSuccess}
+          {toast}
         </div>
       )}
 
