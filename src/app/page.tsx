@@ -33,43 +33,43 @@ type Network = {
 const NETWORKS: Network[] = [
   {
     id: "0x1", chainId: 1, name: "Ethereum", shortName: "ETH",
-    color: "#627EEA", icon: "⟠",
+    color: "#627EEA", icon: "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/eth.png",
     nativeCurrency: "ETH", paraswapNetwork: 1,
     rpcUrl: "https://mainnet.infura.io/v3/", blockExplorer: "https://etherscan.io",
   },
   {
     id: "0x89", chainId: 137, name: "Polygon", shortName: "MATIC",
-    color: "#8247E5", icon: "⬡",
+    color: "#8247E5", icon: "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/matic.png",
     nativeCurrency: "MATIC", paraswapNetwork: 137,
     rpcUrl: "https://polygon-rpc.com", blockExplorer: "https://polygonscan.com",
   },
   {
     id: "0x38", chainId: 56, name: "BNB Chain", shortName: "BNB",
-    color: "#F3BA2F", icon: "◈",
+    color: "#F3BA2F", icon: "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/bnb.png",
     nativeCurrency: "BNB", paraswapNetwork: 56,
     rpcUrl: "https://bsc-dataseed.binance.org", blockExplorer: "https://bscscan.com",
   },
   {
     id: "0xa4b1", chainId: 42161, name: "Arbitrum", shortName: "ARB",
-    color: "#28A0F0", icon: "🔵",
+    color: "#28A0F0", icon: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/arbitrum/info/logo.png",
     nativeCurrency: "ETH", paraswapNetwork: 42161,
     rpcUrl: "https://arb1.arbitrum.io/rpc", blockExplorer: "https://arbiscan.io",
   },
   {
     id: "0xa", chainId: 10, name: "Optimism", shortName: "OP",
-    color: "#FF0420", icon: "🔴",
+    color: "#FF0420", icon: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/optimism/info/logo.png",
     nativeCurrency: "ETH", paraswapNetwork: 10,
     rpcUrl: "https://mainnet.optimism.io", blockExplorer: "https://optimistic.etherscan.io",
   },
   {
     id: "0xa86a", chainId: 43114, name: "Avalanche", shortName: "AVAX",
-    color: "#E84142", icon: "🔺",
+    color: "#E84142", icon: "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/avax.png",
     nativeCurrency: "AVAX", paraswapNetwork: 43114,
     rpcUrl: "https://api.avax.network/ext/bc/C/rpc", blockExplorer: "https://snowtrace.io",
   },
   {
     id: "0x2105", chainId: 8453, name: "Base", shortName: "BASE",
-    color: "#0052FF", icon: "🔷",
+    color: "#0052FF", icon: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/info/logo.png",
     nativeCurrency: "ETH", paraswapNetwork: 8453,
     rpcUrl: "https://mainnet.base.org", blockExplorer: "https://basescan.org",
   },
@@ -201,12 +201,11 @@ function NetworkIcon({ network, size = 20 }: { network: Network; size?: number }
     <span style={{
       display: "inline-flex", alignItems: "center", justifyContent: "center",
       width: size, height: size, borderRadius: "50%",
-      background: network.color + "33",
-      fontSize: size * 0.55, lineHeight: 1,
+      background: network.color + "22",
       border: `1.5px solid ${network.color}55`,
-      flexShrink: 0,
+      flexShrink: 0, overflow: "hidden",
     }}>
-      {network.icon}
+      <Image src={network.icon} alt={network.name} width={size} height={size} unoptimized style={{ borderRadius: "50%", objectFit: "cover" }} />
     </span>
   );
 }
