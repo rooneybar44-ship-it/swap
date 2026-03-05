@@ -711,24 +711,34 @@ export default function SwapPage() {
   }, [account, solanaAccount, isSolana, isOnSelectedNetwork, selectedNetwork, loadBalancesAndPrices]);
 
   async function connectWallet() {
-    if (!window.ethereum) {
-      alert("MetaMask not found. Please install MetaMask browser extension.");
-      return;
-    }
-    try {
-      const accs = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
-      if (accs[0]) {
-        if (isSolana) {
-          setSolanaAccount(accs[0]);
-        } else {
-          setAccount(accs[0]);
-        }
+    if (isSolana) {
+      // Use Phantom wallet for Solana
+      if (!window.solana) {
+        alert("Phantom wallet not found. Please install Phantom browser extension from phantom.app");
+        return;
       }
-    } catch { /* user rejected */ }
+      try {
+        const resp = await window.solana.connect();
+        setSolanaAccount(resp.publicKey.toString());
+      } catch { /* user rejected */ }
+    } else {
+      // Use MetaMask for EVM chains
+      if (!window.ethereum) {
+        alert("MetaMask not found. Please install MetaMask browser extension.");
+        return;
+      }
+      try {
+        const accs = await window.ethereum.request({ method: "eth_requestAccounts" }) as string[];
+        if (accs[0]) setAccount(accs[0]);
+      } catch { /* user rejected */ }
+    }
   }
 
   async function disconnectWallet() {
     if (isSolana) {
+      try {
+        await window.solana?.disconnect();
+      } catch { /* ignore */ }
       setSolanaAccount(null);
     } else {
       setAccount(null);
