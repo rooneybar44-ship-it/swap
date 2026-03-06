@@ -238,9 +238,14 @@ async function getSolanaAddressViaMetaMask(): Promise<string> {
   const result = await window.ethereum!.request({
     method: "wallet_createSession",
     params: {
+      requiredScopes: {},
       optionalScopes: {
         "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": {
           methods: ["signAndSendTransaction", "signTransaction", "signMessage"],
+          notifications: [],
+        },
+        "eip155:1": {
+          methods: [],
           notifications: [],
         },
       },
@@ -725,9 +730,11 @@ export default function SwapPage() {
         setSolanaAccount(pubkey);
         showToast(`✅ Connected to Solana: ${pubkey.slice(0, 6)}...${pubkey.slice(-4)}`, "ok");
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Unknown error";
+        const msg = e instanceof Error ? e.message :
+          (e && typeof e === "object" && "message" in e) ? String((e as Record<string, unknown>).message) :
+          JSON.stringify(e);
         if (!msg.toLowerCase().includes("user rejected") && !msg.toLowerCase().includes("user denied")) {
-          showToast(`❌ Failed to connect Solana via MetaMask Snap: ${msg.slice(0, 60)}`, "err");
+          showToast(`❌ Solana connect failed: ${msg.slice(0, 80)}`, "err");
         }
       }
     } else {
