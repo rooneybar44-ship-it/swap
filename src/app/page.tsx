@@ -18,7 +18,6 @@ const CDN = "https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/
 const PARASWAP_API = "https://apiv5.paraswap.io";
 const COINGECKO_API = "https://api.coingecko.com/api/v3";
 const SOLANA_RPC = "https://api.mainnet-beta.solana.com";
-const SOLFLARE_SNAP_ID = "npm:@solflare-wallet/solana-snap";
 
 type Network = {
   id: string;          // hex chainId e.g. "0x1", or "solana" for Solana
@@ -233,26 +232,30 @@ async function fetchSplTokenBalance(ownerPubkey: string, mintAddress: string): P
 
 // ─── MetaMask Snap helpers for Solana ────────────────────────────────────────
 
-async function installSolanaSnap(): Promise<void> {
-  await window.ethereum!.request({
-    method: "wallet_requestSnaps",
-    params: { [SOLFLARE_SNAP_ID]: {} },
-  });
-}
-
-async function getSolanaAddressViaSnap(): Promise<string> {
+async function getSolanaAddressViaMetaMask(): Promise<string> {
+  // MetaMask 12.x+ supports Solana via CAIP-25 multichain API (wallet_createSession)
+  // The session returns Solana accounts in the solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp namespace
   const result = await window.ethereum!.request({
-    method: "wallet_invokeSnap",
+    method: "wallet_createSession",
     params: {
-      snapId: SOLFLARE_SNAP_ID,
-      request: {
-        method: "getPublicKey",
-        params: { derivationPath: ["44'", "501'", "0'", "0'"] },
+      optionalScopes: {
+        "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp": {
+          methods: ["signAndSendTransaction", "signTransaction", "signMessage"],
+          notifications: [],
+        },
       },
     },
-  });
-  // Result is a base58 public key string
-  return result as string;
+  }) as { sessionScopes?: Record<string, { accounts?: string[] }> };
+
+  const solanaScope = result?.sessionScopes?.["solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"];
+  const accounts = solanaScope?.accounts;
+  if (!accounts || accounts.length === 0) {
+    throw new Error("No Solana accounts returned");
+  }
+  // CAIP-10 format: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:BASE58_ADDRESS"
+  const caip10 = accounts[0];
+  const parts = caip10.split(":");
+  return parts[parts.length - 1]; // extract base58 address
 }
 
 // ─── Components ──────────────────────────────────────────────────────────────
@@ -717,10 +720,8 @@ export default function SwapPage() {
     if (isSolana) {
       // Connect to Solana via MetaMask Snap
       try {
-        showToast("🔌 Installing Solana Snap...", "info");
-        await installSolanaSnap();
-        showToast("🔑 Getting Solana address...", "info");
-        const pubkey = await getSolanaAddressViaSnap();
+        showToast("🔑 Connecting to Solana via MetaMask...", "info");
+        const pubkey = await getSolanaAddressViaMetaMask();
         setSolanaAccount(pubkey);
         showToast(`✅ Connected to Solana: ${pubkey.slice(0, 6)}...${pubkey.slice(-4)}`, "ok");
       } catch (e) {
